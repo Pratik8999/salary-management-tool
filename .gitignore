@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.eslintcache
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+
+# Build / coverage
+coverage/
+htmlcov/
+.coverage
+
+# Claude Code local state
+.claude/
+
+# Local working notes (not for the repo)
+ai_agent_prompt.md
+finalized_feature_list.md
