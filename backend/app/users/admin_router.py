@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,3 +26,14 @@ def create_user(
     db.flush()
     db.refresh(user)
     return user
+
+
+@router.get("", response_model=list[UserRead])
+def list_users(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+) -> list[User]:
+    stmt = select(User).order_by(User.id).limit(limit).offset(offset)
+    return list(db.execute(stmt).scalars().all())
