@@ -1,4 +1,10 @@
+import LoginForm from '@/components/LoginForm'
+
 export default function LoginPage() {
+  function handleSubmit(_credentials) {
+    // API integration lands in slice 2
+  }
+
   return (
     <main className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
@@ -8,9 +14,7 @@ export default function LoginPage() {
             Salary Management Tool
           </p>
         </div>
-        <p className="text-sm text-muted-foreground text-center">
-          Login form coming up next.
-        </p>
+        <LoginForm onSubmit={handleSubmit} />
       </div>
     </main>
   )
