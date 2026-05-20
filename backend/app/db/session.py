@@ -8,7 +8,12 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg://salary:salary@localhost:5432/salary_management",
 )
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    future=True,
+    connect_args={"options": "-c timezone=utc"},
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
