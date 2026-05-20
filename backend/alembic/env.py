@@ -5,7 +5,8 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from app.db.session import Base  # noqa: F401  (import to register models on Base.metadata)
+from app.db.session import Base  # noqa: F401  (register Base for metadata)
+from app import models  # noqa: F401  (register models on Base.metadata)
 
 config = context.config
 
