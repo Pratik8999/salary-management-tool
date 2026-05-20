@@ -11,6 +11,12 @@ class UserCreate(BaseModel):
     role: UserRole
 
 
+class UserUpdate(BaseModel):
+    role: UserRole | None = None
+    is_active: bool | None = None
+    password: str | None = Field(default=None, min_length=8)
+
+
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_admin
 from app.db.session import get_db
 from app.models.user import User
-from app.users.schemas import UserCreate, UserRead
+from app.users.schemas import UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/api/admin/users", tags=["admin-users"])
 
@@ -37,3 +37,32 @@ def list_users(
 ) -> list[User]:
     stmt = select(User).order_by(User.id).limit(limit).offset(offset)
     return list(db.execute(stmt).scalars().all())
+
+
+@router.patch("/{user_id}", response_model=UserRead)
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> User:
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if target.id == admin.id:
+        if payload.is_active is False:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admins cannot deactivate themselves")
+        if payload.role is not None and payload.role is not admin.role:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admins cannot change their own role")
+
+    if payload.role is not None:
+        target.role = payload.role
+    if payload.is_active is not None:
+        target.is_active = payload.is_active
+    if payload.password is not None:
+        target.set_password(payload.password)
+
+    db.flush()
+    db.refresh(target)
+    return target
