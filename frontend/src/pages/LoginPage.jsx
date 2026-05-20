@@ -1,8 +1,27 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import LoginForm from '@/components/LoginForm'
+import { login } from '@/api/auth'
+import { setToken } from '@/lib/auth'
 
 export default function LoginPage() {
-  function handleSubmit(_credentials) {
-    // API integration lands in slice 2
+  const navigate = useNavigate()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [serverError, setServerError] = useState('')
+
+  async function handleSubmit(credentials) {
+    setIsSubmitting(true)
+    setServerError('')
+    try {
+      const { access_token } = await login(credentials)
+      setToken(access_token)
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      const detail = err?.response?.data?.detail
+      setServerError(detail || 'Something went wrong. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -14,7 +33,11 @@ export default function LoginPage() {
             Salary Management Tool
           </p>
         </div>
-        <LoginForm onSubmit={handleSubmit} />
+        <LoginForm
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          serverError={serverError}
+        />
       </div>
     </main>
   )
