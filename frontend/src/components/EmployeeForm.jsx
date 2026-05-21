@@ -8,7 +8,6 @@ const EMPLOYMENT_TYPES = [
   { value: 'full_time', label: 'Full-time' },
   { value: 'part_time', label: 'Part-time' },
   { value: 'contract', label: 'Contract' },
-  { value: 'intern', label: 'Intern' },
 ]
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

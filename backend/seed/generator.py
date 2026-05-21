@@ -62,13 +62,12 @@ EMPLOYMENT_TYPES: tuple[str, ...] = (
     "full_time",
     "part_time",
     "contract",
-    "intern",
 )
 
 # Weighted so the bulk of seeded employees look like permanent staff,
-# with realistic minorities of contractors and interns. The order matches
+# with smaller slices of part-time and contractors. Order matches
 # EMPLOYMENT_TYPES.
-EMPLOYMENT_TYPE_WEIGHTS: tuple[int, ...] = (78, 8, 10, 4)
+EMPLOYMENT_TYPE_WEIGHTS: tuple[int, ...] = (82, 8, 10)
 
 COUNTRIES: tuple[str, ...] = (
     "India",

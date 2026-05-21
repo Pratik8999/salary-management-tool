@@ -15,6 +15,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
+COPY seed ./seed
 
 RUN uv sync --frozen --no-dev \
     && useradd --create-home --shell /bin/bash app \
