@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.departments.service import get_or_create_department
 from app.models.employee import Employee, EmploymentType
 from app.models.user import User, UserRole
 
@@ -18,6 +19,7 @@ def _hr(db_session) -> User:
 
 
 def _employee_kwargs(**overrides):
+    """Field values for schemas and Pydantic — keeps `department` as a string."""
     base = dict(
         first_name="Ada",
         last_name="Lovelace",
@@ -33,14 +35,30 @@ def _employee_kwargs(**overrides):
     return base
 
 
+def _employee_model_kwargs(db_session, **overrides):
+    """Field values for the ORM model — resolves `department` to a FK id."""
+    kwargs = _employee_kwargs(**overrides)
+    department_name = kwargs.pop("department")
+    kwargs["department_id"] = get_or_create_department(
+        db_session, department_name
+    ).id
+    return kwargs
+
+
+def _employee_without_department(**overrides) -> Employee:
+    kwargs = _employee_kwargs(**overrides)
+    kwargs.pop("department")
+    return Employee(**kwargs)
+
+
 def test_full_name_concatenates_first_and_last():
-    employee = Employee(**_employee_kwargs())
+    employee = _employee_without_department()
     assert employee.full_name == "Ada Lovelace"
 
 
 def test_full_name_handles_extra_whitespace():
-    employee = Employee(
-        **_employee_kwargs(first_name="  Ada  ", last_name="  Lovelace  ")
+    employee = _employee_without_department(
+        first_name="  Ada  ", last_name="  Lovelace  "
     )
     assert employee.full_name == "Ada Lovelace"
 
@@ -58,13 +76,17 @@ def test_employment_type_rejects_unknown_value():
 
 def test_email_is_unique(db_session):
     hr = _hr(db_session)
-    db_session.add(Employee(created_by_id=hr.id, **_employee_kwargs()))
+    db_session.add(
+        Employee(created_by_id=hr.id, **_employee_model_kwargs(db_session))
+    )
     db_session.flush()
 
     db_session.add(
         Employee(
             created_by_id=hr.id,
-            **_employee_kwargs(first_name="Different", last_name="Person"),
+            **_employee_model_kwargs(
+                db_session, first_name="Different", last_name="Person"
+            ),
         )
     )
     with pytest.raises(IntegrityError):
@@ -73,7 +95,9 @@ def test_email_is_unique(db_session):
 
 def test_is_active_defaults_to_true(db_session):
     hr = _hr(db_session)
-    employee = Employee(created_by_id=hr.id, **_employee_kwargs())
+    employee = Employee(
+        created_by_id=hr.id, **_employee_model_kwargs(db_session)
+    )
     db_session.add(employee)
     db_session.flush()
     db_session.refresh(employee)
@@ -82,7 +106,9 @@ def test_is_active_defaults_to_true(db_session):
 
 def test_created_by_relation_resolves_to_user(db_session):
     hr = _hr(db_session)
-    employee = Employee(created_by_id=hr.id, **_employee_kwargs())
+    employee = Employee(
+        created_by_id=hr.id, **_employee_model_kwargs(db_session)
+    )
     db_session.add(employee)
     db_session.flush()
     db_session.refresh(employee)
@@ -92,7 +118,9 @@ def test_created_by_relation_resolves_to_user(db_session):
 
 def test_persists_with_all_required_fields(db_session):
     hr = _hr(db_session)
-    employee = Employee(created_by_id=hr.id, **_employee_kwargs())
+    employee = Employee(
+        created_by_id=hr.id, **_employee_model_kwargs(db_session)
+    )
     db_session.add(employee)
     db_session.flush()
     db_session.refresh(employee)

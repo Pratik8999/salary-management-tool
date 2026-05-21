@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 
 from app.auth.jwt_handler import create_access_token
+from app.departments.service import get_or_create_department
 from app.models.employee import Employee, EmploymentType
 from app.models.user import User, UserRole
 
@@ -37,6 +38,7 @@ def _make_employee(
     date_joined: date = date(2024, 1, 15),
     is_active: bool = True,
 ) -> Employee:
+    dept = get_or_create_department(db_session, department)
     employee = Employee(
         first_name=first_name,
         last_name=last_name,
@@ -44,7 +46,7 @@ def _make_employee(
         job_title=job_title,
         country=country,
         salary=salary,
-        department=department,
+        department_id=dept.id,
         employment_type=employment_type,
         date_joined=date_joined,
         is_active=is_active,

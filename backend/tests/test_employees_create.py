@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 
 from app.auth.jwt_handler import create_access_token
+from app.departments.service import get_or_create_department
 from app.models.employee import Employee
 from app.models.user import User, UserRole
 
@@ -69,6 +70,7 @@ async def test_create_persists_to_db(client, db_session):
 @pytest.mark.asyncio
 async def test_duplicate_email_returns_409(client, db_session):
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
+    qa_dept = get_or_create_department(db_session, "QA")
     db_session.add(
         Employee(
             first_name="Existing",
@@ -77,7 +79,7 @@ async def test_duplicate_email_returns_409(client, db_session):
             job_title="QA",
             country="IN",
             salary=40000,
-            department="QA",
+            department_id=qa_dept.id,
             employment_type="full_time",
             date_joined=date(2023, 1, 1),
             created_by_id=hr.id,

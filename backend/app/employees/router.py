@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_hr
 from app.db.session import get_db
+from app.departments.service import get_or_create_department
 from app.employees.schemas import EmployeeCreate, EmployeePage, EmployeeRead
+from app.models.department import Department
 from app.models.employee import Employee
 from app.models.user import User
 
@@ -25,7 +27,11 @@ def create_employee(
             status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
         )
 
-    employee = Employee(**payload.model_dump(), created_by_id=hr.id)
+    data = payload.model_dump()
+    department = get_or_create_department(db, data.pop("department"))
+    employee = Employee(
+        **data, department_id=department.id, created_by_id=hr.id
+    )
     db.add(employee)
     db.flush()
     db.refresh(employee)
@@ -46,7 +52,7 @@ def list_employees(
     if not include_inactive:
         filters.append(Employee.is_active.is_(True))
     if department is not None:
-        filters.append(Employee.department == department)
+        filters.append(func.lower(Department.name) == department.lower())
     if q is not None:
         pattern = f"%{q}%"
         filters.append(
@@ -58,7 +64,7 @@ def list_employees(
             )
         )
 
-    base_stmt = select(Employee).where(*filters)
+    base_stmt = select(Employee).join(Department, Employee.department_id == Department.id).where(*filters)
     total = db.execute(
         select(func.count()).select_from(base_stmt.subquery())
     ).scalar_one()
@@ -76,9 +82,10 @@ def list_departments(
     _hr: User = Depends(get_current_hr),
 ) -> list[str]:
     rows = db.execute(
-        select(Employee.department)
+        select(Department.name)
+        .join(Employee, Employee.department_id == Department.id)
         .where(Employee.is_active.is_(True))
         .distinct()
-        .order_by(Employee.department)
+        .order_by(Department.name)
     ).scalars().all()
     return list(rows)

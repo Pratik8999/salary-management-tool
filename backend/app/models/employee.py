@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.mixins import TimestampMixin
 from app.db.session import Base
+from app.models.department import Department
 from app.models.user import User
 
 
@@ -26,7 +27,9 @@ class Employee(Base, TimestampMixin):
     job_title: Mapped[str] = mapped_column(String(150), nullable=False)
     country: Mapped[str] = mapped_column(String(100), nullable=False)
     salary: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    department_id: Mapped[int] = mapped_column(
+        ForeignKey("departments.id", ondelete="RESTRICT"), nullable=False
+    )
     employment_type: Mapped[EmploymentType] = mapped_column(
         Enum(
             EmploymentType,
@@ -44,13 +47,18 @@ class Employee(Base, TimestampMixin):
     )
 
     created_by: Mapped[User] = relationship(User, lazy="joined")
+    department_ref: Mapped[Department] = relationship(Department, lazy="joined")
 
     __table_args__ = (
         Index("ix_employees_email", "email", unique=True),
         Index("ix_employees_country", "country"),
-        Index("ix_employees_department", "department"),
+        Index("ix_employees_department_id", "department_id"),
     )
 
     @property
     def full_name(self) -> str:
         return f"{self.first_name.strip()} {self.last_name.strip()}"
+
+    @property
+    def department(self) -> str:
+        return self.department_ref.name
