@@ -9,3 +9,9 @@ class SalaryByCountry(BaseModel):
     min: Decimal
     max: Decimal
     avg: Decimal
+
+
+class SalaryByJobTitle(BaseModel):
+    job_title: str
+    count: int
+    avg: Decimal
