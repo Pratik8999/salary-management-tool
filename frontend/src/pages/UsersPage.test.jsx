@@ -17,9 +17,10 @@ vi.mock('@/api/auth', () => ({
 vi.mock('@/api/admin', () => ({
   listUsers: vi.fn(),
   createUser: vi.fn(),
+  updateUser: vi.fn(),
 }))
 
-import { listUsers, createUser } from '@/api/admin'
+import { listUsers, createUser, updateUser } from '@/api/admin'
 
 function renderApp(path = '/admin/users') {
   return render(
@@ -34,6 +35,7 @@ describe('UsersPage', () => {
     clearToken()
     listUsers.mockReset()
     createUser.mockReset()
+    updateUser.mockReset()
     setToken('jwt-test')
   })
 
@@ -152,6 +154,122 @@ describe('UsersPage', () => {
     })
     expect(await screen.findByText('new-hr@example.com')).toBeInTheDocument()
     expect(listUsers).toHaveBeenCalledTimes(2)
+  })
+
+  it('deactivates a user via a row action and refreshes the list', async () => {
+    const activeRow = {
+      id: 7,
+      email: 'hr@example.com',
+      role: 'hr',
+      is_active: true,
+      created_at: '2026-05-21T00:00:00Z',
+      updated_at: '2026-05-21T00:00:00Z',
+    }
+    const deactivatedRow = { ...activeRow, is_active: false }
+    listUsers
+      .mockResolvedValueOnce([activeRow])
+      .mockResolvedValueOnce([deactivatedRow])
+    updateUser.mockResolvedValueOnce(deactivatedRow)
+
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByText('hr@example.com')
+    await user.click(
+      screen.getByRole('button', { name: /deactivate hr@example\.com/i }),
+    )
+
+    await waitFor(() => {
+      expect(updateUser).toHaveBeenCalledWith(7, { is_active: false })
+    })
+    expect(await screen.findByText(/inactive/i)).toBeInTheDocument()
+    expect(listUsers).toHaveBeenCalledTimes(2)
+  })
+
+  it('reactivates an inactive user', async () => {
+    const inactiveRow = {
+      id: 8,
+      email: 'old-hr@example.com',
+      role: 'hr',
+      is_active: false,
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: '2026-05-01T00:00:00Z',
+    }
+    const activeRow = { ...inactiveRow, is_active: true }
+    listUsers
+      .mockResolvedValueOnce([inactiveRow])
+      .mockResolvedValueOnce([activeRow])
+    updateUser.mockResolvedValueOnce(activeRow)
+
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByText('old-hr@example.com')
+    await user.click(
+      screen.getByRole('button', { name: /activate old-hr@example\.com/i }),
+    )
+
+    await waitFor(() => {
+      expect(updateUser).toHaveBeenCalledWith(8, { is_active: true })
+    })
+  })
+
+  it('changes a user role via the per-row role selector', async () => {
+    const hrRow = {
+      id: 9,
+      email: 'someone@example.com',
+      role: 'hr',
+      is_active: true,
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: '2026-05-01T00:00:00Z',
+    }
+    listUsers
+      .mockResolvedValueOnce([hrRow])
+      .mockResolvedValueOnce([{ ...hrRow, role: 'admin' }])
+    updateUser.mockResolvedValueOnce({ ...hrRow, role: 'admin' })
+
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByText('someone@example.com')
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /role for someone@example\.com/i }),
+      'admin',
+    )
+
+    await waitFor(() => {
+      expect(updateUser).toHaveBeenCalledWith(9, { role: 'admin' })
+    })
+  })
+
+  it('shows a server error when an edit fails', async () => {
+    const row = {
+      id: 1,
+      email: 'admin@example.com',
+      role: 'admin',
+      is_active: true,
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: '2026-05-01T00:00:00Z',
+    }
+    listUsers.mockResolvedValue([row])
+    updateUser.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: { detail: 'Admins cannot deactivate themselves' },
+      },
+    })
+
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByText('admin@example.com')
+    await user.click(
+      screen.getByRole('button', { name: /deactivate admin@example\.com/i }),
+    )
+
+    expect(
+      await screen.findByText(/admins cannot deactivate themselves/i),
+    ).toBeInTheDocument()
   })
 
   it('surfaces the server error when create fails', async () => {
