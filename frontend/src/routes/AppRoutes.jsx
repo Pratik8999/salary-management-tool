@@ -3,6 +3,7 @@ import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
 import UsersPage from '@/pages/UsersPage'
 import EmployeesPage from '@/pages/EmployeesPage'
+import EmployeeDetailPage from '@/pages/EmployeeDetailPage'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 
 export default function AppRoutes() {
@@ -23,6 +24,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <EmployeesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/employees/:id"
+        element={
+          <ProtectedRoute>
+            <EmployeeDetailPage />
           </ProtectedRoute>
         }
       />

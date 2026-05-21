@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { listEmployees } from '@/api/employees'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -135,7 +136,14 @@ export default function EmployeesPage() {
               <tbody>
                 {items.map((e) => (
                   <tr key={e.id} className="border-t">
-                    <td className="px-4 py-2">{e.full_name}</td>
+                    <td className="px-4 py-2">
+                      <Link
+                        to={`/employees/${e.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {e.full_name}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2 text-muted-foreground">{e.email}</td>
                     <td className="px-4 py-2">{e.job_title}</td>
                     <td className="px-4 py-2">{e.department}</td>
