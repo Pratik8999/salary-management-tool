@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -146,3 +146,19 @@ def update_employee(
     db.flush()
     db.refresh(employee)
     return employee
+
+
+@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr),
+) -> Response:
+    employee = db.get(Employee, employee_id)
+    if employee is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+    employee.is_active = False
+    db.flush()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
