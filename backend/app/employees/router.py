@@ -47,6 +47,7 @@ def create_employee(
 def list_employees(
     q: str | None = Query(default=None, min_length=1, max_length=100),
     department: str | None = Query(default=None, min_length=1, max_length=100),
+    country: str | None = Query(default=None, min_length=1, max_length=100),
     include_inactive: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -58,6 +59,8 @@ def list_employees(
         filters.append(Employee.is_active.is_(True))
     if department is not None:
         filters.append(func.lower(Department.name) == department.lower())
+    if country is not None:
+        filters.append(func.lower(Employee.country) == country.lower())
     if q is not None:
         pattern = f"%{q}%"
         filters.append(
