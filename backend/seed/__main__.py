@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -60,11 +61,14 @@ def main(argv: list[str] | None = None) -> int:
         admin = _ensure_admin(db)
         db.commit()
         print(f"Seeding {args.count} employees (creator={admin.email})...")
+        started = time.monotonic()
         run_seed(
             db, employee_count=args.count, creator_id=admin.id, seed=args.seed
         )
         db.commit()
-    print("Done.")
+        elapsed = time.monotonic() - started
+    rate = args.count / elapsed if elapsed > 0 else float("inf")
+    print(f"Done in {elapsed:.2f}s ({rate:,.0f} rows/sec).")
     return 0
 
 
