@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_hr
 from app.db.session import get_db
 from app.departments.service import get_or_create_department
-from app.employees.schemas import EmployeeCreate, EmployeePage, EmployeeRead
+from app.employees.schemas import (
+    EmployeeCreate,
+    EmployeePage,
+    EmployeeRead,
+    EmployeeUpdate,
+)
 from app.models.department import Department
 from app.models.employee import Employee
 from app.models.user import User
@@ -102,4 +107,42 @@ def get_employee(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
         )
+    return employee
+
+
+@router.patch("/{employee_id}", response_model=EmployeeRead)
+def update_employee(
+    employee_id: int,
+    payload: EmployeeUpdate,
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr),
+) -> Employee:
+    employee = db.get(Employee, employee_id)
+    if employee is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+
+    updates = payload.model_dump(exclude_unset=True)
+
+    new_email = updates.get("email")
+    if new_email is not None and new_email != employee.email:
+        clash = db.execute(
+            select(Employee).where(Employee.email == new_email)
+        ).scalar_one_or_none()
+        if clash is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already exists",
+            )
+
+    if "department" in updates:
+        dept = get_or_create_department(db, updates.pop("department"))
+        employee.department_id = dept.id
+
+    for field, value in updates.items():
+        setattr(employee, field, value)
+
+    db.flush()
+    db.refresh(employee)
     return employee
