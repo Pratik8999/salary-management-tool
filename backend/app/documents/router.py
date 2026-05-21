@@ -147,3 +147,32 @@ def download_document(
         media_type=doc.content_type,
         filename=doc.file_name,
     )
+
+
+@router.delete(
+    "/{employee_id}/documents/{doc_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_document(
+    employee_id: int,
+    doc_id: int,
+    db: Session = Depends(get_db),
+    storage_root: Path = Depends(get_storage_root),
+    actor: User = Depends(get_current_hr_or_admin),
+) -> None:
+    if db.get(Employee, employee_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+
+    doc = db.get(EmployeeDocument, doc_id)
+    if doc is None or doc.employee_id != employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    full_path = storage_root / doc.storage_path
+    full_path.unlink(missing_ok=True)
+
+    db.delete(doc)
+    db.flush()
