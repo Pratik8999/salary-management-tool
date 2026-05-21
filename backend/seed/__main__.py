@@ -4,9 +4,9 @@ Usage (inside the backend dir):
 
     uv run python -m seed --count 10000
 
-The script connects to the configured DATABASE_URL, ensures an admin user
-exists (creating admin@example.com / admin123 if missing), then wipes
-and re-seeds the employee data.
+The script connects to the configured DATABASE_URL, ensures a default
+admin + HR user exist (admin@example.com / admin123 and hr@example.com /
+hr123 if missing), then wipes and re-seeds the employee data.
 """
 
 from __future__ import annotations
@@ -24,20 +24,40 @@ from seed.runner import run_seed
 
 DEFAULT_ADMIN_EMAIL = "admin@example.com"
 DEFAULT_ADMIN_PASSWORD = "admin123"
+DEFAULT_HR_EMAIL = "hr@example.com"
+DEFAULT_HR_PASSWORD = "hr123"
+
+
+def _ensure_user(db, *, email: str, password: str, role: UserRole) -> User:
+    existing = db.execute(
+        select(User).where(User.email == email)
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+    user = User(email=email, role=role, is_active=True)
+    user.set_password(password)
+    db.add(user)
+    db.flush()
+    db.refresh(user)
+    return user
 
 
 def _ensure_admin(db) -> User:
-    admin = db.execute(
-        select(User).where(User.email == DEFAULT_ADMIN_EMAIL)
-    ).scalar_one_or_none()
-    if admin is not None:
-        return admin
-    admin = User(email=DEFAULT_ADMIN_EMAIL, role=UserRole.ADMIN, is_active=True)
-    admin.set_password(DEFAULT_ADMIN_PASSWORD)
-    db.add(admin)
-    db.flush()
-    db.refresh(admin)
-    return admin
+    return _ensure_user(
+        db,
+        email=DEFAULT_ADMIN_EMAIL,
+        password=DEFAULT_ADMIN_PASSWORD,
+        role=UserRole.ADMIN,
+    )
+
+
+def _ensure_hr(db) -> User:
+    return _ensure_user(
+        db,
+        email=DEFAULT_HR_EMAIL,
+        password=DEFAULT_HR_PASSWORD,
+        role=UserRole.HR,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -59,7 +79,9 @@ def main(argv: list[str] | None = None) -> int:
     SessionLocal = sessionmaker(bind=engine, autoflush=False, future=True)
     with SessionLocal() as db:
         admin = _ensure_admin(db)
+        hr = _ensure_hr(db)
         db.commit()
+        print(f"Default users ready: {admin.email} (admin), {hr.email} (hr)")
         print(f"Seeding {args.count} employees (creator={admin.email})...")
         started = time.monotonic()
         run_seed(

@@ -86,9 +86,10 @@ docker compose exec backend python -m seed --count 10000 --seed 42
 cd backend && uv run python -m seed --count 10000 --seed 42
 ```
 
-If no `admin@example.com` user exists, one is created with password `admin123`
-so the script is usable on a fresh clone. The seed is idempotent — running it
-twice replaces the first batch rather than piling on.
+If no `admin@example.com` user exists, one is created with password `admin123`,
+and an HR user `hr@example.com` / `hr123` is created the same way — so the
+script is usable on a fresh clone. The seed is idempotent — running it twice
+replaces the first batch rather than piling on.
 
 Typical timings on the dev stack: **~2.8s for 10,000 rows** (single
 transaction, 1,000-row INSERT batches).
@@ -189,14 +190,17 @@ docker compose exec backend uv run alembic revision --autogenerate -m "describe 
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | `admin@example.com` | `admin123` (only if you let the seed script create one — pre-existing users are never touched) |
+| Admin | `admin@example.com` | `admin123` |
+| HR | `hr@example.com` | `hr123` |
+
+Both are created by the seed script only if the email is missing — pre-existing users are never touched.
 
 Reset / create users via the admin UI at `/admin/users` once you're signed in,
 or directly in Postgres if you need to recover.
 
 ---
 
-## Project Layout (deeper)
+## Project Layout
 
 ```
 backend/

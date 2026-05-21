@@ -17,7 +17,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://salary:salary@localhost:5432/salary_management_test",
+    "postgresql+psycopg://pratik:root123@localhost:5432/salary_management_test",
 )
 
 
