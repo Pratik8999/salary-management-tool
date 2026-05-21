@@ -183,6 +183,66 @@ async def test_department_filter(client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_country_filter(client, db_session):
+    hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
+    _make_employee(db_session, hr, email="uk@example.com", country="UK")
+    _make_employee(db_session, hr, email="us@example.com", country="US")
+    _make_employee(db_session, hr, email="in@example.com", country="IN")
+
+    response = await client.get("/api/employees?country=US", headers=_auth(hr))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["email"] == "us@example.com"
+
+
+@pytest.mark.asyncio
+async def test_country_filter_is_case_insensitive(client, db_session):
+    hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
+    _make_employee(db_session, hr, email="uk@example.com", country="UK")
+
+    response = await client.get("/api/employees?country=uk", headers=_auth(hr))
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_country_and_department_combine(client, db_session):
+    hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
+    _make_employee(
+        db_session,
+        hr,
+        email="uk-eng@example.com",
+        country="UK",
+        department="Engineering",
+    )
+    _make_employee(
+        db_session,
+        hr,
+        email="us-eng@example.com",
+        country="US",
+        department="Engineering",
+    )
+    _make_employee(
+        db_session,
+        hr,
+        email="uk-sales@example.com",
+        country="UK",
+        department="Sales",
+    )
+
+    response = await client.get(
+        "/api/employees?country=UK&department=Engineering", headers=_auth(hr)
+    )
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["email"] == "uk-eng@example.com"
+
+
+@pytest.mark.asyncio
 async def test_q_and_department_combine(client, db_session):
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
     _make_employee(
