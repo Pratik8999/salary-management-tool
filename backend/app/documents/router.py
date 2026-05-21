@@ -11,6 +11,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_hr_or_admin
@@ -89,3 +90,26 @@ async def upload_document(
     db.flush()
     db.refresh(doc)
     return doc
+
+
+@router.get(
+    "/{employee_id}/documents",
+    response_model=list[DocumentRead],
+)
+def list_documents(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(get_current_hr_or_admin),
+) -> list[EmployeeDocument]:
+    employee = db.get(Employee, employee_id)
+    if employee is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+
+    stmt = (
+        select(EmployeeDocument)
+        .where(EmployeeDocument.employee_id == employee_id)
+        .order_by(EmployeeDocument.created_at.desc(), EmployeeDocument.id.desc())
+    )
+    return list(db.execute(stmt).scalars())
