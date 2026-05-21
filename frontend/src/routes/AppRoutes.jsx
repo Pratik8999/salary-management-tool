@@ -4,6 +4,7 @@ import DashboardPage from '@/pages/DashboardPage'
 import UsersPage from '@/pages/UsersPage'
 import EmployeesPage from '@/pages/EmployeesPage'
 import EmployeeDetailPage from '@/pages/EmployeeDetailPage'
+import DepartmentsPage from '@/pages/DepartmentsPage'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 
 export default function AppRoutes() {
@@ -32,6 +33,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <EmployeeDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/departments"
+        element={
+          <ProtectedRoute role="admin">
+            <DepartmentsPage />
           </ProtectedRoute>
         }
       />

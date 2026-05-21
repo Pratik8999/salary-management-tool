@@ -41,6 +41,14 @@ export default function DashboardPage() {
               Manage users
             </Link>
           )}
+          {isAdmin && (
+            <Link
+              to="/admin/departments"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Departments
+            </Link>
+          )}
         </nav>
 
         <p className="text-sm text-muted-foreground">

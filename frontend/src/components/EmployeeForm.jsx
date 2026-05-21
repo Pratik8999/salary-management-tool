@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { listDepartments } from '@/api/departments'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,7 +25,7 @@ function validate(values) {
   else if (!EMAIL_RE.test(values.email)) errors.email = 'Enter a valid email'
   if (!values.job_title.trim()) errors.job_title = 'Required'
   if (!values.country.trim()) errors.country = 'Required'
-  if (!values.department.trim()) errors.department = 'Required'
+  if (!values.department_id) errors.department_id = 'Required'
   if (!values.date_joined) errors.date_joined = 'Required'
   else if (values.date_joined > todayIso())
     errors.date_joined = 'Cannot be in the future'
@@ -42,7 +43,7 @@ const EMPTY = {
   job_title: '',
   country: '',
   salary: '',
-  department: '',
+  department_id: '',
   employment_type: 'full_time',
   date_joined: '',
 }
@@ -59,8 +60,47 @@ export default function EmployeeForm({
     ...EMPTY,
     ...(initialValues || {}),
     salary: initialValues?.salary != null ? String(initialValues.salary) : '',
+    department_id:
+      initialValues?.department_id != null
+        ? String(initialValues.department_id)
+        : '',
   }))
   const [errors, setErrors] = useState({})
+  const [departments, setDepartments] = useState([])
+  const [departmentsError, setDepartmentsError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    listDepartments()
+      .then((data) => {
+        if (cancelled) return
+        setDepartments(data)
+        // For an edit where the assigned department is no longer in the
+        // active list, splice it in so the dropdown can still show it.
+        if (
+          initialValues?.department_id != null &&
+          !data.some((d) => d.id === initialValues.department_id)
+        ) {
+          setDepartments((current) => [
+            ...current,
+            {
+              id: initialValues.department_id,
+              name: initialValues.department || `Department #${initialValues.department_id}`,
+              is_active: false,
+            },
+          ])
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        const detail = err?.response?.data?.detail
+        setDepartmentsError(detail || 'Could not load departments')
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function setField(name, value) {
     setValues((v) => ({ ...v, [name]: value }))
@@ -74,6 +114,7 @@ export default function EmployeeForm({
     onSubmit({
       ...values,
       salary: Number(values.salary),
+      department_id: Number(values.department_id),
     })
   }
 
@@ -113,14 +154,41 @@ export default function EmployeeForm({
           error={errors.job_title}
           disabled={isSubmitting}
         />
-        <Field
-          id="emp-department"
-          label="Department"
-          value={values.department}
-          onChange={(v) => setField('department', v)}
-          error={errors.department}
-          disabled={isSubmitting}
-        />
+        <div className="space-y-1.5">
+          <Label htmlFor="emp-department">Department</Label>
+          <select
+            id="emp-department"
+            value={values.department_id}
+            onChange={(e) => setField('department_id', e.target.value)}
+            aria-invalid={Boolean(errors.department_id) || undefined}
+            aria-describedby={
+              errors.department_id ? 'emp-department-error' : undefined
+            }
+            disabled={isSubmitting || departments.length === 0}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Select a department</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+                {d.is_active === false ? ' (inactive)' : ''}
+              </option>
+            ))}
+          </select>
+          {errors.department_id && (
+            <p id="emp-department-error" className="text-xs text-destructive">
+              {errors.department_id}
+            </p>
+          )}
+          {departmentsError && (
+            <p className="text-xs text-destructive">{departmentsError}</p>
+          )}
+          {!departmentsError && departments.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No departments yet — ask an admin to create one.
+            </p>
+          )}
+        </div>
         <Field
           id="emp-country"
           label="Country"

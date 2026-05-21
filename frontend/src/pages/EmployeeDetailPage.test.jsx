@@ -22,6 +22,11 @@ vi.mock('@/api/employees', () => ({
   deleteEmployeeDocument: vi.fn(),
   downloadEmployeeDocument: vi.fn(),
 }))
+vi.mock('@/api/departments', () => ({
+  listDepartments: vi.fn().mockResolvedValue([
+    { id: 1, name: 'Engineering', is_active: true },
+  ]),
+}))
 
 import {
   getEmployee,

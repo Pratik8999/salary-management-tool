@@ -1,20 +1,38 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import EmployeeForm from './EmployeeForm'
 
+vi.mock('@/api/departments', () => ({
+  listDepartments: vi.fn(),
+}))
+
+import { listDepartments } from '@/api/departments'
+
+const DEPTS = [
+  { id: 1, name: 'Engineering', is_active: true },
+  { id: 2, name: 'Sales', is_active: true },
+]
+
 describe('EmployeeForm', () => {
-  it('submits a normalized payload (salary as a number)', async () => {
+  beforeEach(() => {
+    listDepartments.mockReset()
+    listDepartments.mockResolvedValue(DEPTS)
+  })
+
+  it('submits a normalized payload (department_id + salary as numbers)', async () => {
     const onSubmit = vi.fn()
     const user = userEvent.setup()
 
     render(<EmployeeForm onSubmit={onSubmit} submitLabel="Create employee" />)
 
+    await screen.findByRole('option', { name: 'Engineering' })
+
     await user.type(screen.getByLabelText(/first name/i), 'Ada')
     await user.type(screen.getByLabelText(/last name/i), 'Lovelace')
     await user.type(screen.getByLabelText(/email/i), 'ada@example.com')
     await user.type(screen.getByLabelText(/job title/i), 'Engineer')
-    await user.type(screen.getByLabelText(/department/i), 'Engineering')
+    await user.selectOptions(screen.getByLabelText(/department/i), '1')
     await user.type(screen.getByLabelText(/country/i), 'UK')
     await user.type(screen.getByLabelText(/salary/i), '50000')
     await user.type(screen.getByLabelText(/date joined/i), '2024-01-15')
@@ -28,7 +46,7 @@ describe('EmployeeForm', () => {
           last_name: 'Lovelace',
           email: 'ada@example.com',
           job_title: 'Engineer',
-          department: 'Engineering',
+          department_id: 1,
           country: 'UK',
           salary: 50000,
           date_joined: '2024-01-15',
@@ -43,6 +61,7 @@ describe('EmployeeForm', () => {
     const user = userEvent.setup()
 
     render(<EmployeeForm onSubmit={onSubmit} submitLabel="Create employee" />)
+    await screen.findByRole('option', { name: 'Engineering' })
     await user.click(screen.getByRole('button', { name: /create employee/i }))
 
     expect(onSubmit).not.toHaveBeenCalled()

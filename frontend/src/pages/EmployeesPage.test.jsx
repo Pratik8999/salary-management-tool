@@ -19,6 +19,11 @@ vi.mock('@/api/employees', () => ({
   listDepartments: vi.fn(),
   createEmployee: vi.fn(),
 }))
+vi.mock('@/api/departments', () => ({
+  listDepartments: vi.fn().mockResolvedValue([
+    { id: 1, name: 'Engineering', is_active: true },
+  ]),
+}))
 
 import { listEmployees } from '@/api/employees'
 
