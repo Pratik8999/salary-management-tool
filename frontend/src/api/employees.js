@@ -23,6 +23,16 @@ export async function listDepartments() {
   return data
 }
 
+export async function createEmployee(payload) {
+  const { data } = await api.post('/employees', payload)
+  return data
+}
+
+export async function updateEmployee(employeeId, payload) {
+  const { data } = await api.patch(`/employees/${employeeId}`, payload)
+  return data
+}
+
 export async function getEmployee(employeeId) {
   const { data } = await api.get(`/employees/${employeeId}`)
   return data

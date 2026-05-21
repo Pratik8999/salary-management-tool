@@ -16,6 +16,7 @@ vi.mock('@/api/auth', () => ({
 }))
 vi.mock('@/api/employees', () => ({
   getEmployee: vi.fn(),
+  updateEmployee: vi.fn(),
   listEmployeeDocuments: vi.fn(),
   uploadEmployeeDocument: vi.fn(),
   deleteEmployeeDocument: vi.fn(),

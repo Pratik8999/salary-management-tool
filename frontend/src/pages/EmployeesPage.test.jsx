@@ -17,6 +17,7 @@ vi.mock('@/api/auth', () => ({
 vi.mock('@/api/employees', () => ({
   listEmployees: vi.fn(),
   listDepartments: vi.fn(),
+  createEmployee: vi.fn(),
 }))
 
 import { listEmployees } from '@/api/employees'

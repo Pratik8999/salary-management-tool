@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listEmployees } from '@/api/employees'
+import { createEmployee, listEmployees } from '@/api/employees'
+import EmployeeForm from '@/components/EmployeeForm'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -23,6 +24,9 @@ export default function EmployeesPage() {
   const [data, setData] = useState(null)
   const [loadError, setLoadError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
 
   const fetchPage = useCallback(async () => {
     setIsLoading(true)
@@ -52,6 +56,26 @@ export default function EmployeesPage() {
     setSearchTerm(query.trim())
   }
 
+  async function handleCreate(payload) {
+    setIsCreating(true)
+    setCreateError('')
+    try {
+      await createEmployee(payload)
+      setShowCreate(false)
+      setPage(0)
+      await fetchPage()
+    } catch (err) {
+      const detail = err?.response?.data?.detail
+      setCreateError(
+        Array.isArray(detail)
+          ? detail.map((d) => d.msg).join('; ')
+          : detail || 'Could not create employee',
+      )
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   const total = data?.total ?? 0
   const items = data?.items ?? []
   const from = total === 0 ? 0 : page * PAGE_SIZE + 1
@@ -62,12 +86,41 @@ export default function EmployeesPage() {
   return (
     <main className="min-h-screen bg-muted/40 px-6 py-10">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
-          <p className="text-sm text-muted-foreground">
-            Active employees in the directory.
-          </p>
+        <header className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
+            <p className="text-sm text-muted-foreground">
+              Active employees in the directory.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => {
+              setShowCreate((v) => !v)
+              setCreateError('')
+            }}
+          >
+            {showCreate ? 'Close' : 'Add employee'}
+          </Button>
         </header>
+
+        {showCreate && (
+          <section className="space-y-3 rounded-lg border bg-card p-6">
+            <div>
+              <h2 className="text-base font-medium">Add an employee</h2>
+              <p className="text-xs text-muted-foreground">
+                New records appear in the list right away.
+              </p>
+            </div>
+            <EmployeeForm
+              onSubmit={handleCreate}
+              onCancel={() => setShowCreate(false)}
+              isSubmitting={isCreating}
+              serverError={createError}
+              submitLabel="Create employee"
+            />
+          </section>
+        )}
 
         <form
           onSubmit={handleSearchSubmit}

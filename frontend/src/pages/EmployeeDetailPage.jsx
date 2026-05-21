@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getEmployee } from '@/api/employees'
+import { getEmployee, updateEmployee } from '@/api/employees'
 import EmployeeDocumentsPanel from '@/components/EmployeeDocumentsPanel'
+import EmployeeForm from '@/components/EmployeeForm'
+import { Button } from '@/components/ui/button'
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -25,6 +27,9 @@ export default function EmployeeDetailPage() {
   const employeeId = Number(id)
   const [employee, setEmployee] = useState(null)
   const [loadError, setLoadError] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -47,6 +52,25 @@ export default function EmployeeDetailPage() {
       cancelled = true
     }
   }, [employeeId])
+
+  async function handleSave(payload) {
+    setIsSaving(true)
+    setEditError('')
+    try {
+      const updated = await updateEmployee(employeeId, payload)
+      setEmployee(updated)
+      setIsEditing(false)
+    } catch (err) {
+      const detail = err?.response?.data?.detail
+      setEditError(
+        Array.isArray(detail)
+          ? detail.map((d) => d.msg).join('; ')
+          : detail || 'Could not update employee',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-muted/40 px-6 py-10">
@@ -75,35 +99,68 @@ export default function EmployeeDetailPage() {
 
         {employee && (
           <>
-            <header className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight">
-                {employee.full_name}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {employee.job_title} · {employee.department} ·{' '}
-                {employee.is_active ? 'Active' : 'Inactive'}
-              </p>
+            <header className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {employee.full_name}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {employee.job_title} · {employee.department} ·{' '}
+                  {employee.is_active ? 'Active' : 'Inactive'}
+                </p>
+              </div>
+              {!isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(true)
+                    setEditError('')
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
             </header>
 
-            <section className="grid grid-cols-2 gap-4 rounded-lg border bg-card p-6 md:grid-cols-3">
-              <Field label="Email" value={employee.email} />
-              <Field label="Country" value={employee.country} />
-              <Field
-                label="Salary"
-                value={Number(employee.salary).toLocaleString()}
-              />
-              <Field
-                label="Employment type"
-                value={employee.employment_type?.replace('_', ' ')}
-              />
-              <Field
-                label="Date joined"
-                value={formatDate(employee.date_joined)}
-              />
-              <Field label="Created" value={formatDate(employee.created_at)} />
-            </section>
+            {isEditing ? (
+              <section className="space-y-3 rounded-lg border bg-card p-6">
+                <div>
+                  <h2 className="text-base font-medium">Edit employee</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Only the fields you change will be sent.
+                  </p>
+                </div>
+                <EmployeeForm
+                  initialValues={employee}
+                  onSubmit={handleSave}
+                  onCancel={() => setIsEditing(false)}
+                  isSubmitting={isSaving}
+                  serverError={editError}
+                  submitLabel="Save changes"
+                />
+              </section>
+            ) : (
+              <section className="grid grid-cols-2 gap-4 rounded-lg border bg-card p-6 md:grid-cols-3">
+                <Field label="Email" value={employee.email} />
+                <Field label="Country" value={employee.country} />
+                <Field
+                  label="Salary"
+                  value={Number(employee.salary).toLocaleString()}
+                />
+                <Field
+                  label="Employment type"
+                  value={employee.employment_type?.replace('_', ' ')}
+                />
+                <Field
+                  label="Date joined"
+                  value={formatDate(employee.date_joined)}
+                />
+                <Field label="Created" value={formatDate(employee.created_at)} />
+              </section>
+            )}
 
-            <EmployeeDocumentsPanel employeeId={employee.id} />
+            {!isEditing && <EmployeeDocumentsPanel employeeId={employee.id} />}
           </>
         )}
       </div>
