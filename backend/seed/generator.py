@@ -12,6 +12,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
+# Sourced from the canonical reference catalog so the seed and the
+# /api/countries endpoint can never drift out of sync.
+from app.reference.countries import COUNTRY_NAMES as COUNTRIES
+
 # Catalog of departments the seed assumes will exist in the database.
 # The runner is responsible for ensuring rows exist for each name and
 # wiring up the resulting ids before calling build_employee_rows.
@@ -69,18 +73,6 @@ EMPLOYMENT_TYPES: tuple[str, ...] = (
 # EMPLOYMENT_TYPES.
 EMPLOYMENT_TYPE_WEIGHTS: tuple[int, ...] = (82, 8, 10)
 
-COUNTRIES: tuple[str, ...] = (
-    "India",
-    "United States",
-    "United Kingdom",
-    "Canada",
-    "Germany",
-    "Australia",
-    "Singapore",
-    "Netherlands",
-    "Ireland",
-    "United Arab Emirates",
-)
 
 
 def load_name_list(path: Path) -> list[str]:

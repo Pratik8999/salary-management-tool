@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class SalaryByCountry(BaseModel):
     country: str
+    currency: str | None
     count: int
     min: Decimal
     max: Decimal

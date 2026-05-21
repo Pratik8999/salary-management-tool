@@ -62,3 +62,12 @@ class Employee(Base, TimestampMixin):
     @property
     def department(self) -> str:
         return self.department_ref.name
+
+    @property
+    def currency(self) -> str | None:
+        # Imported lazily to avoid pulling reference data into the
+        # SQLAlchemy import graph; the catalog is plain Python and cheap
+        # to look up per-row.
+        from app.reference.countries import currency_for
+
+        return currency_for(self.country)

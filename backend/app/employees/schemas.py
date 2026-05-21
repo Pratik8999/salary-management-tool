@@ -70,6 +70,7 @@ class EmployeeRead(EmployeeBase):
     full_name: str
     department_id: int
     department: str
+    currency: str | None
     created_by_id: int
     created_at: datetime
     updated_at: datetime

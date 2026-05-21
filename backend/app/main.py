@@ -5,6 +5,7 @@ from app.departments.router import router as departments_router
 from app.documents.router import router as documents_router
 from app.employees.router import router as employees_router
 from app.insights.router import router as insights_router
+from app.reference.router import router as reference_router
 from app.users.admin_router import router as admin_users_router
 
 app = FastAPI(title="Salary Management API", version="0.1.0")
@@ -15,6 +16,7 @@ app.include_router(departments_router)
 app.include_router(employees_router)
 app.include_router(insights_router)
 app.include_router(documents_router)
+app.include_router(reference_router)
 
 
 @app.get("/api/health")

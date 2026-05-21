@@ -19,6 +19,7 @@ from app.insights.schemas import (
 from app.models.department import Department
 from app.models.employee import Employee
 from app.models.user import User
+from app.reference.countries import currency_for
 
 ANNIVERSARY_MILESTONES = (1, 3, 5, 10)
 
@@ -46,6 +47,7 @@ def salary_by_country(
     return [
         SalaryByCountry(
             country=row.country,
+            currency=currency_for(row.country),
             count=row.count,
             min=row.min,
             max=row.max,
