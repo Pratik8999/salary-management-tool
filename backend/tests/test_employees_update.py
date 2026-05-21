@@ -99,51 +99,54 @@ async def test_partial_update_leaves_omitted_fields_alone(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_update_department_to_existing_one(client, db_session):
+async def test_update_department_by_id(client, db_session):
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
-    get_or_create_department(db_session, "Sales")
+    sales = get_or_create_department(db_session, "Sales")
     employee = _make_employee(db_session, hr)
 
     response = await client.patch(
         f"/api/employees/{employee.id}",
         headers=_auth(hr),
-        json={"department": "Sales"},
+        json={"department_id": sales.id},
     )
 
     assert response.status_code == 200
-    assert response.json()["department"] == "Sales"
+    body = response.json()
+    assert body["department"] == "Sales"
+    assert body["department_id"] == sales.id
 
 
 @pytest.mark.asyncio
-async def test_update_department_auto_creates_new_one(client, db_session):
+async def test_update_to_unknown_department_id_returns_422(client, db_session):
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
     employee = _make_employee(db_session, hr)
 
     response = await client.patch(
         f"/api/employees/{employee.id}",
         headers=_auth(hr),
-        json={"department": "Research"},
+        json={"department_id": 999999},
     )
 
-    assert response.status_code == 200
-    assert response.json()["department"] == "Research"
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_update_department_is_case_insensitive_match(client, db_session):
+async def test_update_to_inactive_department_id_returns_422(client, db_session):
+    from app.models.department import Department
+
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
-    get_or_create_department(db_session, "Engineering")
-    employee = _make_employee(db_session, hr, department="Sales")
+    legacy = Department(name="Legacy", is_active=False)
+    db_session.add(legacy)
+    db_session.flush()
+    employee = _make_employee(db_session, hr)
 
     response = await client.patch(
         f"/api/employees/{employee.id}",
         headers=_auth(hr),
-        json={"department": "engineering"},
+        json={"department_id": legacy.id},
     )
 
-    assert response.status_code == 200
-    # Existing canonical name is preserved
-    assert response.json()["department"] == "Engineering"
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio

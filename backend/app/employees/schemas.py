@@ -13,7 +13,6 @@ class EmployeeBase(BaseModel):
     job_title: str = Field(min_length=1, max_length=150)
     country: str = Field(min_length=1, max_length=100)
     salary: Decimal
-    department: str = Field(min_length=1, max_length=100)
     employment_type: EmploymentType
     date_joined: date
 
@@ -33,7 +32,7 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    department_id: int
 
 
 class EmployeeUpdate(BaseModel):
@@ -43,7 +42,7 @@ class EmployeeUpdate(BaseModel):
     job_title: str | None = Field(default=None, min_length=1, max_length=150)
     country: str | None = Field(default=None, min_length=1, max_length=100)
     salary: Decimal | None = None
-    department: str | None = Field(default=None, min_length=1, max_length=100)
+    department_id: int | None = None
     employment_type: EmploymentType | None = None
     date_joined: date | None = None
     is_active: bool | None = None
@@ -69,6 +68,8 @@ class EmployeeRead(EmployeeBase):
     id: int
     is_active: bool
     full_name: str
+    department_id: int
+    department: str
     created_by_id: int
     created_at: datetime
     updated_at: datetime

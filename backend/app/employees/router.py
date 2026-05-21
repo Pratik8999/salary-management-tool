@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_hr_or_admin
 from app.db.session import get_db
-from app.departments.service import get_or_create_department
 from app.employees.schemas import (
     EmployeeCreate,
     EmployeePage,
@@ -16,6 +15,21 @@ from app.models.employee import Employee
 from app.models.user import User
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
+
+
+def _resolve_department(db: Session, department_id: int) -> Department:
+    dept = db.get(Department, department_id)
+    if dept is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Department not found",
+        )
+    if not dept.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Department is inactive",
+        )
+    return dept
 
 
 @router.post("", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED)
@@ -32,11 +46,9 @@ def create_employee(
             status_code=status.HTTP_409_CONFLICT, detail="Email already exists"
         )
 
+    _resolve_department(db, payload.department_id)
     data = payload.model_dump()
-    department = get_or_create_department(db, data.pop("department"))
-    employee = Employee(
-        **data, department_id=department.id, created_by_id=actor.id
-    )
+    employee = Employee(**data, created_by_id=actor.id)
     db.add(employee)
     db.flush()
     db.refresh(employee)
@@ -84,21 +96,6 @@ def list_employees(
     return EmployeePage(items=list(items), total=total, limit=limit, offset=offset)
 
 
-@router.get("/departments", response_model=list[str])
-def list_departments(
-    db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr_or_admin),
-) -> list[str]:
-    rows = db.execute(
-        select(Department.name)
-        .join(Employee, Employee.department_id == Department.id)
-        .where(Employee.is_active.is_(True))
-        .distinct()
-        .order_by(Department.name)
-    ).scalars().all()
-    return list(rows)
-
-
 @router.get("/{employee_id}", response_model=EmployeeRead)
 def get_employee(
     employee_id: int,
@@ -139,9 +136,8 @@ def update_employee(
                 detail="Email already exists",
             )
 
-    if "department" in updates:
-        dept = get_or_create_department(db, updates.pop("department"))
-        employee.department_id = dept.id
+    if "department_id" in updates:
+        _resolve_department(db, updates["department_id"])
 
     for field, value in updates.items():
         setattr(employee, field, value)
