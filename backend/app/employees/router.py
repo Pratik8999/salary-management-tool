@@ -1,4 +1,9 @@
+import csv
+import io
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -67,28 +72,17 @@ def create_employee(
     return employee
 
 
-@router.get("", response_model=EmployeePage)
-def list_employees(
-    q: str | None = Query(default=None, min_length=1, max_length=100),
-    department: str | None = Query(default=None, min_length=1, max_length=100),
-    department_id: int | None = Query(default=None, ge=1),
-    country: str | None = Query(default=None, min_length=1, max_length=100),
-    job_title: str | None = Query(default=None, min_length=1, max_length=150),
-    employment_type: EmploymentType | None = Query(default=None),
-    sort: str | None = Query(default=None),
-    include_inactive: bool = Query(default=False),
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr_or_admin),
-) -> EmployeePage:
-    if sort is not None and sort not in SORT_OPTIONS:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=f"Unknown sort value: {sort}",
-        )
-
-    filters = []
+def _employee_filters(
+    *,
+    q: str | None,
+    department: str | None,
+    department_id: int | None,
+    country: str | None,
+    job_title: str | None,
+    employment_type: EmploymentType | None,
+    include_inactive: bool,
+) -> list:
+    filters: list = []
     if not include_inactive:
         filters.append(Employee.is_active.is_(True))
     if department is not None:
@@ -111,26 +105,151 @@ def list_employees(
                 Employee.job_title.ilike(pattern),
             )
         )
+    return filters
 
-    base_stmt = select(Employee).join(Department, Employee.department_id == Department.id).where(*filters)
+
+def _order_clauses(sort: str | None):
+    if sort is None:
+        return (Employee.id,)
+    chosen = SORT_OPTIONS[sort]
+    # Always end on Employee.id so paging through a tied sort key
+    # (e.g. two employees on the same salary) stays stable.
+    return (*chosen, Employee.id) if isinstance(chosen, tuple) else (chosen, Employee.id)
+
+
+def _validate_sort(sort: str | None) -> None:
+    if sort is not None and sort not in SORT_OPTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Unknown sort value: {sort}",
+        )
+
+
+@router.get("", response_model=EmployeePage)
+def list_employees(
+    q: str | None = Query(default=None, min_length=1, max_length=100),
+    department: str | None = Query(default=None, min_length=1, max_length=100),
+    department_id: int | None = Query(default=None, ge=1),
+    country: str | None = Query(default=None, min_length=1, max_length=100),
+    job_title: str | None = Query(default=None, min_length=1, max_length=150),
+    employment_type: EmploymentType | None = Query(default=None),
+    sort: str | None = Query(default=None),
+    include_inactive: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr_or_admin),
+) -> EmployeePage:
+    _validate_sort(sort)
+    filters = _employee_filters(
+        q=q,
+        department=department,
+        department_id=department_id,
+        country=country,
+        job_title=job_title,
+        employment_type=employment_type,
+        include_inactive=include_inactive,
+    )
+
+    base_stmt = (
+        select(Employee)
+        .join(Department, Employee.department_id == Department.id)
+        .where(*filters)
+    )
     total = db.execute(
         select(func.count()).select_from(base_stmt.subquery())
     ).scalar_one()
 
-    if sort is None:
-        order_clauses = (Employee.id,)
-    else:
-        chosen = SORT_OPTIONS[sort]
-        # Always end on Employee.id so paging through a tied sort key
-        # (e.g. two employees on the same salary) stays stable.
-        order_clauses = (*chosen, Employee.id) if isinstance(chosen, tuple) else (chosen, Employee.id)
-
     items = (
-        db.execute(base_stmt.order_by(*order_clauses).limit(limit).offset(offset))
+        db.execute(
+            base_stmt.order_by(*_order_clauses(sort)).limit(limit).offset(offset)
+        )
         .scalars()
         .all()
     )
     return EmployeePage(items=list(items), total=total, limit=limit, offset=offset)
+
+
+EXPORT_COLUMNS = [
+    "id",
+    "first_name",
+    "last_name",
+    "email",
+    "job_title",
+    "department",
+    "country",
+    "salary",
+    "employment_type",
+    "date_joined",
+    "is_active",
+]
+
+
+def _row_for_csv(emp: Employee) -> list:
+    return [
+        emp.id,
+        emp.first_name,
+        emp.last_name,
+        emp.email,
+        emp.job_title,
+        emp.department,  # property -> department_ref.name
+        emp.country,
+        str(emp.salary),
+        emp.employment_type.value,
+        emp.date_joined.isoformat(),
+        str(emp.is_active).lower(),
+    ]
+
+
+@router.get("/export.csv")
+def export_employees_csv(
+    q: str | None = Query(default=None, min_length=1, max_length=100),
+    department: str | None = Query(default=None, min_length=1, max_length=100),
+    department_id: int | None = Query(default=None, ge=1),
+    country: str | None = Query(default=None, min_length=1, max_length=100),
+    job_title: str | None = Query(default=None, min_length=1, max_length=150),
+    employment_type: EmploymentType | None = Query(default=None),
+    sort: str | None = Query(default=None),
+    include_inactive: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr_or_admin),
+) -> StreamingResponse:
+    _validate_sort(sort)
+    filters = _employee_filters(
+        q=q,
+        department=department,
+        department_id=department_id,
+        country=country,
+        job_title=job_title,
+        employment_type=employment_type,
+        include_inactive=include_inactive,
+    )
+    stmt = (
+        select(Employee)
+        .join(Department, Employee.department_id == Department.id)
+        .where(*filters)
+        .order_by(*_order_clauses(sort))
+    )
+
+    def _stream():
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(EXPORT_COLUMNS)
+        yield buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+        for emp in db.execute(stmt).scalars():
+            writer.writerow(_row_for_csv(emp))
+            yield buffer.getvalue()
+            buffer.seek(0)
+            buffer.truncate(0)
+
+    filename = f"employees-{date.today().isoformat()}.csv"
+    return StreamingResponse(
+        _stream(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/countries", response_model=list[str])
