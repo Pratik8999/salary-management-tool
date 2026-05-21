@@ -244,32 +244,52 @@ describe('UsersPage', () => {
 
   it('shows a server error when an edit fails', async () => {
     const row = {
-      id: 1,
-      email: 'admin@example.com',
-      role: 'admin',
+      id: 42,
+      email: 'someone-else@example.com',
+      role: 'hr',
       is_active: true,
       created_at: '2026-05-01T00:00:00Z',
       updated_at: '2026-05-01T00:00:00Z',
     }
     listUsers.mockResolvedValue([row])
     updateUser.mockRejectedValueOnce({
-      response: {
-        status: 400,
-        data: { detail: 'Admins cannot deactivate themselves' },
-      },
+      response: { status: 400, data: { detail: 'Could not update user' } },
     })
 
     const user = userEvent.setup()
     renderApp()
 
-    await screen.findByText('admin@example.com')
+    await screen.findByText('someone-else@example.com')
     await user.click(
-      screen.getByRole('button', { name: /deactivate admin@example\.com/i }),
+      screen.getByRole('button', {
+        name: /deactivate someone-else@example\.com/i,
+      }),
     )
 
     expect(
-      await screen.findByText(/admins cannot deactivate themselves/i),
+      await screen.findByText(/could not update user/i),
     ).toBeInTheDocument()
+  })
+
+  it('disables the deactivate button for the currently signed-in admin', async () => {
+    listUsers.mockResolvedValueOnce([
+      {
+        id: 1,
+        email: 'admin@example.com',
+        role: 'admin',
+        is_active: true,
+        created_at: '2026-05-01T00:00:00Z',
+        updated_at: '2026-05-01T00:00:00Z',
+      },
+    ])
+    renderApp()
+    await screen.findByText('admin@example.com')
+    expect(
+      screen.getByRole('button', { name: /deactivate admin@example\.com/i }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', { name: /role for admin@example\.com/i }),
+    ).toBeDisabled()
   })
 
   it('surfaces the server error when create fails', async () => {

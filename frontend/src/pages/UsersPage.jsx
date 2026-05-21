@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { createUser, listUsers } from '@/api/admin'
+import { createUser, listUsers, updateUser } from '@/api/admin'
+import { Button } from '@/components/ui/button'
 import UserCreateForm from '@/components/UserCreateForm'
+import { useAuth } from '@/lib/AuthContext'
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -9,10 +11,13 @@ function formatDate(iso) {
 }
 
 export default function UsersPage() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState(null)
   const [loadError, setLoadError] = useState('')
   const [createError, setCreateError] = useState('')
+  const [editError, setEditError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [busyUserId, setBusyUserId] = useState(null)
 
   const fetchUsers = useCallback(async () => {
     setLoadError('')
@@ -43,6 +48,20 @@ export default function UsersPage() {
     }
   }
 
+  async function applyUpdate(userId, payload) {
+    setBusyUserId(userId)
+    setEditError('')
+    try {
+      await updateUser(userId, payload)
+      await fetchUsers()
+    } catch (err) {
+      const detail = err?.response?.data?.detail
+      setEditError(detail || 'Could not update user')
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-muted/40 px-6 py-10">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -66,6 +85,15 @@ export default function UsersPage() {
             serverError={createError}
           />
         </section>
+
+        {editError && (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          >
+            {editError}
+          </div>
+        )}
 
         {loadError && (
           <div
@@ -93,21 +121,57 @@ export default function UsersPage() {
                   <th className="px-4 py-2 font-medium">Role</th>
                   <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium">Created</th>
+                  <th className="px-4 py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-t">
-                    <td className="px-4 py-2">{u.email}</td>
-                    <td className="px-4 py-2 capitalize">{u.role}</td>
-                    <td className="px-4 py-2">
-                      {u.is_active ? 'Active' : 'Inactive'}
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {formatDate(u.created_at)}
-                    </td>
-                  </tr>
-                ))}
+                {users.map((u) => {
+                  const isSelf = currentUser?.id === u.id
+                  const rowBusy = busyUserId === u.id
+                  return (
+                    <tr key={u.id} className="border-t">
+                      <td className="px-4 py-2">{u.email}</td>
+                      <td className="px-4 py-2">
+                        <select
+                          aria-label={`Role for ${u.email}`}
+                          value={u.role}
+                          disabled={isSelf || rowBusy}
+                          onChange={(e) =>
+                            applyUpdate(u.id, { role: e.target.value })
+                          }
+                          className="h-8 rounded-md border border-input bg-transparent px-2 text-sm capitalize disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="hr">HR</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-2">
+                        {u.is_active ? 'Active' : 'Inactive'}
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">
+                        {formatDate(u.created_at)}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={(isSelf && u.is_active) || rowBusy}
+                          aria-label={
+                            u.is_active
+                              ? `Deactivate ${u.email}`
+                              : `Activate ${u.email}`
+                          }
+                          onClick={() =>
+                            applyUpdate(u.id, { is_active: !u.is_active })
+                          }
+                        >
+                          {u.is_active ? 'Deactivate' : 'Activate'}
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
