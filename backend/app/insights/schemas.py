@@ -38,3 +38,21 @@ class Anniversary(BaseModel):
     date_joined: date
     anniversary_date: date
     years: int
+
+
+class DepartmentHeadcount(BaseModel):
+    department: str
+    count: int
+
+
+class TopPaidTitle(BaseModel):
+    job_title: str
+    avg_salary: Decimal
+    count: int
+
+
+class Overview(BaseModel):
+    total_headcount: int
+    avg_salary: Decimal | None
+    headcount_by_department: list[DepartmentHeadcount]
+    top_paid_job_titles: list[TopPaidTitle]

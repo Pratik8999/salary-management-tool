@@ -8,10 +8,13 @@ from app.auth.dependencies import get_current_hr_or_admin
 from app.db.session import get_db
 from app.insights.schemas import (
     Anniversary,
+    DepartmentHeadcount,
+    Overview,
     SalaryByCountry,
     SalaryByDepartment,
     SalaryByJobTitle,
     TenureByDepartment,
+    TopPaidTitle,
 )
 from app.models.department import Department
 from app.models.employee import Employee
@@ -193,3 +196,62 @@ def tenure_anniversaries(
 
     out.sort(key=lambda a: (a.anniversary_date, a.employee_id))
     return out
+
+
+@router.get("/overview", response_model=Overview)
+def overview(
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr_or_admin),
+) -> Overview:
+    # Each metric is its own aggregate query so the SQL stays trivially
+    # readable. Three small queries vs one big window-function query is
+    # the right trade for an HR-only dashboard call.
+    active = Employee.is_active.is_(True)
+
+    total_headcount = db.execute(
+        select(func.count()).select_from(Employee).where(active)
+    ).scalar_one()
+
+    avg_salary = db.execute(
+        select(func.avg(Employee.salary)).where(active)
+    ).scalar_one()
+
+    dept_rows = db.execute(
+        select(
+            Department.name.label("department"),
+            func.count(Employee.id).label("count"),
+        )
+        .join(Employee, Employee.department_id == Department.id)
+        .where(active)
+        .group_by(Department.name)
+        .order_by(Department.name)
+    ).all()
+
+    top_rows = db.execute(
+        select(
+            Employee.job_title.label("job_title"),
+            func.avg(Employee.salary).label("avg_salary"),
+            func.count().label("count"),
+        )
+        .where(active)
+        .group_by(Employee.job_title)
+        .order_by(func.avg(Employee.salary).desc())
+        .limit(5)
+    ).all()
+
+    return Overview(
+        total_headcount=total_headcount,
+        avg_salary=avg_salary,
+        headcount_by_department=[
+            DepartmentHeadcount(department=r.department, count=r.count)
+            for r in dept_rows
+        ],
+        top_paid_job_titles=[
+            TopPaidTitle(
+                job_title=r.job_title,
+                avg_salary=r.avg_salary,
+                count=r.count,
+            )
+            for r in top_rows
+        ],
+    )
