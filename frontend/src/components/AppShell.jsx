@@ -42,9 +42,9 @@ function Sidebar({ isAdmin }) {
       <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
         <BrandMark />
         <div className="leading-tight">
-          <div className="text-base font-semibold tracking-tight">Salary Manager</div>
+          <div className="text-base font-semibold tracking-tight">HRM Tool</div>
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            HR Console
+            Salary &amp; People Operations
           </div>
         </div>
       </div>
