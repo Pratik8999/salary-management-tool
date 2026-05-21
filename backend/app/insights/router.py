@@ -4,7 +4,12 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_hr
 from app.db.session import get_db
-from app.insights.schemas import SalaryByCountry, SalaryByJobTitle
+from app.insights.schemas import (
+    SalaryByCountry,
+    SalaryByDepartment,
+    SalaryByJobTitle,
+)
+from app.models.department import Department
 from app.models.employee import Employee
 from app.models.user import User
 
@@ -64,6 +69,31 @@ def salary_by_job_title(
     return [
         SalaryByJobTitle(
             job_title=row.job_title, count=row.count, avg=row.avg
+        )
+        for row in rows
+    ]
+
+
+@router.get("/salary/by-department", response_model=list[SalaryByDepartment])
+def salary_by_department(
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr),
+) -> list[SalaryByDepartment]:
+    rows = db.execute(
+        select(
+            Department.name.label("department"),
+            func.count().label("count"),
+            func.avg(Employee.salary).label("avg"),
+        )
+        .join(Employee, Employee.department_id == Department.id)
+        .where(Employee.is_active.is_(True))
+        .group_by(Department.name)
+        .order_by(Department.name)
+    ).all()
+
+    return [
+        SalaryByDepartment(
+            department=row.department, count=row.count, avg=row.avg
         )
         for row in rows
     ]
