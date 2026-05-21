@@ -89,3 +89,17 @@ def list_departments(
         .order_by(Department.name)
     ).scalars().all()
     return list(rows)
+
+
+@router.get("/{employee_id}", response_model=EmployeeRead)
+def get_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr),
+) -> Employee:
+    employee = db.get(Employee, employee_id)
+    if employee is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+    return employee
