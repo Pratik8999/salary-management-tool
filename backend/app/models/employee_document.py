@@ -45,3 +45,7 @@ class EmployeeDocument(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_employee_documents_employee_id", "employee_id"),
     )
+
+    @property
+    def uploaded_at(self):
+        return self.created_at

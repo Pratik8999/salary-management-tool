@@ -38,3 +38,6 @@ htmlcov/
 # Local working notes (not for the repo)
 ai_agent_prompt.md
 finalized_feature_list.md
+
+# Uploaded employee documents (bind-mounted to the container)
+backend/storage/
