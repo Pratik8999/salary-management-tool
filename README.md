@@ -200,6 +200,43 @@ or directly in Postgres if you need to recover.
 
 ---
 
+## Deploy on a server (production stack)
+
+The `docker-compose.prod.yml` overlay builds production images and exposes
+only port 80. The frontend is built to static files and served by nginx,
+which also reverse-proxies `/api` to the backend. Postgres and the backend
+have no host port mappings — they only talk over the internal compose network.
+
+```bash
+# On the server, after cloning the repo:
+cp .env.example .env
+# edit .env — at minimum set a strong JWT_SECRET and a non-default POSTGRES_PASSWORD
+
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+The backend container runs `alembic upgrade head` on every start, so schema
+changes apply automatically. Seed data is opt-in:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend python -m seed --count 10000
+```
+
+Open `http://<server-ip>/` and log in with the credentials in the table above.
+
+**Firewall / Security Group:** open inbound 80 (anywhere), 22 (your IP only).
+Do **not** expose 5432 or 8000 publicly — the prod compose intentionally
+doesn't map them.
+
+**Updating after a code change:**
+
+```bash
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+---
+
 ## Project Layout
 
 ```

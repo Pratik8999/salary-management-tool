@@ -16,6 +16,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
 COPY seed ./seed
+COPY alembic ./alembic
+COPY alembic.ini ./
 
 RUN uv sync --frozen --no-dev \
     && useradd --create-home --shell /bin/bash app \
