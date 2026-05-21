@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_hr
+from app.auth.dependencies import get_current_hr_or_admin
 from app.db.session import get_db
 from app.insights.schemas import (
     SalaryByCountry,
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/insights", tags=["insights"])
 @router.get("/salary/by-country", response_model=list[SalaryByCountry])
 def salary_by_country(
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> list[SalaryByCountry]:
     rows = db.execute(
         select(
@@ -50,7 +50,7 @@ def salary_by_country(
 def salary_by_job_title(
     country: str = Query(..., min_length=1, max_length=100),
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> list[SalaryByJobTitle]:
     rows = db.execute(
         select(
@@ -77,7 +77,7 @@ def salary_by_job_title(
 @router.get("/salary/by-department", response_model=list[SalaryByDepartment])
 def salary_by_department(
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> list[SalaryByDepartment]:
     rows = db.execute(
         select(

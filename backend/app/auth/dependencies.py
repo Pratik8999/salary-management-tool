@@ -39,3 +39,11 @@ def _require_role(required: UserRole):
 
 get_current_admin = _require_role(UserRole.ADMIN)
 get_current_hr = _require_role(UserRole.HR)
+
+
+def get_current_hr_or_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role not in (UserRole.HR, UserRole.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+        )
+    return user

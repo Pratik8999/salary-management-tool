@@ -245,7 +245,7 @@ async def test_unauthenticated_returns_401(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_admin_cannot_update_employee(client, db_session):
+async def test_admin_can_update_employee(client, db_session):
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
     employee = _make_employee(db_session, hr)
     admin = _seeded_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
@@ -253,7 +253,8 @@ async def test_admin_cannot_update_employee(client, db_session):
     response = await client.patch(
         f"/api/employees/{employee.id}",
         headers=_auth(admin),
-        json={"job_title": "X"},
+        json={"job_title": "Architect"},
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 200
+    assert response.json()["job_title"] == "Architect"

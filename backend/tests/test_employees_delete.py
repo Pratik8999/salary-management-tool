@@ -141,7 +141,7 @@ async def test_unauthenticated_returns_401(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_admin_cannot_delete_employee(client, db_session):
+async def test_admin_can_delete_employee(client, db_session):
     hr = _seeded_user(db_session, email="hr@example.com", role=UserRole.HR)
     employee = _make_employee(db_session, hr)
     admin = _seeded_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
@@ -149,4 +149,6 @@ async def test_admin_cannot_delete_employee(client, db_session):
     response = await client.delete(
         f"/api/employees/{employee.id}", headers=_auth(admin)
     )
-    assert response.status_code == 403
+    assert response.status_code == 204
+    db_session.expire(employee)
+    assert db_session.get(Employee, employee.id).is_active is False

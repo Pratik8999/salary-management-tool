@@ -94,12 +94,13 @@ async def test_duplicate_email_returns_409(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_admin_cannot_create_employee(client, db_session):
+async def test_admin_can_create_employee(client, db_session):
     admin = _seeded_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
 
     response = await client.post("/api/employees", headers=_auth(admin), json=_payload())
 
-    assert response.status_code == 403
+    assert response.status_code == 201
+    assert response.json()["created_by_id"] == admin.id
 
 
 @pytest.mark.asyncio

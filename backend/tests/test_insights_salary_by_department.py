@@ -149,9 +149,9 @@ async def test_unauthenticated_returns_401(client):
 
 
 @pytest.mark.asyncio
-async def test_admin_cannot_access(client, db_session):
+async def test_admin_can_access(client, db_session):
     admin = _seeded_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
     response = await client.get(
         "/api/insights/salary/by-department", headers=_auth(admin)
     )
-    assert response.status_code == 403
+    assert response.status_code == 200

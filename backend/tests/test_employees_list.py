@@ -271,10 +271,10 @@ async def test_q_and_department_combine(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_admin_cannot_list_employees(client, db_session):
+async def test_admin_can_list_employees(client, db_session):
     admin = _seeded_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
     response = await client.get("/api/employees", headers=_auth(admin))
-    assert response.status_code == 403
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -335,7 +335,7 @@ async def test_departments_returns_empty_when_no_employees(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_departments_is_hr_only(client, db_session):
+async def test_departments_accessible_to_admin(client, db_session):
     admin = _seeded_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
     response = await client.get("/api/employees/departments", headers=_auth(admin))
-    assert response.status_code == 403
+    assert response.status_code == 200

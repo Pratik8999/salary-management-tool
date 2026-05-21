@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_hr
+from app.auth.dependencies import get_current_hr_or_admin
 from app.db.session import get_db
 from app.departments.service import get_or_create_department
 from app.employees.schemas import (
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/employees", tags=["employees"])
 def create_employee(
     payload: EmployeeCreate,
     db: Session = Depends(get_db),
-    hr: User = Depends(get_current_hr),
+    actor: User = Depends(get_current_hr_or_admin),
 ) -> Employee:
     existing = db.execute(
         select(Employee).where(Employee.email == payload.email)
@@ -35,7 +35,7 @@ def create_employee(
     data = payload.model_dump()
     department = get_or_create_department(db, data.pop("department"))
     employee = Employee(
-        **data, department_id=department.id, created_by_id=hr.id
+        **data, department_id=department.id, created_by_id=actor.id
     )
     db.add(employee)
     db.flush()
@@ -52,7 +52,7 @@ def list_employees(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> EmployeePage:
     filters = []
     if not include_inactive:
@@ -87,7 +87,7 @@ def list_employees(
 @router.get("/departments", response_model=list[str])
 def list_departments(
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> list[str]:
     rows = db.execute(
         select(Department.name)
@@ -103,7 +103,7 @@ def list_departments(
 def get_employee(
     employee_id: int,
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> Employee:
     employee = db.get(Employee, employee_id)
     if employee is None:
@@ -118,7 +118,7 @@ def update_employee(
     employee_id: int,
     payload: EmployeeUpdate,
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> Employee:
     employee = db.get(Employee, employee_id)
     if employee is None:
@@ -155,7 +155,7 @@ def update_employee(
 def delete_employee(
     employee_id: int,
     db: Session = Depends(get_db),
-    _hr: User = Depends(get_current_hr),
+    _hr: User = Depends(get_current_hr_or_admin),
 ) -> Response:
     employee = db.get(Employee, employee_id)
     if employee is None:
