@@ -1,25 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createEmployee, listEmployees } from '@/api/employees'
+import { listDepartments } from '@/api/departments'
+import { listEmployeeCountries } from '@/api/insights'
 import EmployeeForm from '@/components/EmployeeForm'
+import SuccessBanner from '@/components/SuccessBanner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { formatSalary } from '@/lib/currency'
 
 const PAGE_SIZE = 20
-
-function formatSalary(value, country) {
-  if (value == null) return ''
-  const num = Number(value)
-  if (Number.isNaN(num)) return value
-  return num.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })
-}
 
 export default function EmployeesPage() {
   const [query, setQuery] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [departmentFilter, setDepartmentFilter] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
   const [page, setPage] = useState(0)
   const [data, setData] = useState(null)
   const [loadError, setLoadError] = useState('')
@@ -27,13 +23,38 @@ export default function EmployeesPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [createError, setCreateError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [createSuccess, setCreateSuccess] = useState('')
+  const [departments, setDepartments] = useState([])
+  const [countries, setCountries] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([listDepartments(), listEmployeeCountries()])
+      .then(([depts, ctrys]) => {
+        if (cancelled) return
+        setDepartments(depts.filter((d) => d.is_active !== false))
+        setCountries(ctrys)
+      })
+      .catch(() => {
+        // The filter dropdowns are convenience UI — if they fail to load,
+        // the page still works through the search box.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const fetchPage = useCallback(async () => {
     setIsLoading(true)
     setLoadError('')
     try {
+      const selectedDept = departments.find(
+        (d) => String(d.id) === departmentFilter,
+      )
       const result = await listEmployees({
         q: searchTerm || undefined,
+        department: selectedDept ? selectedDept.name : undefined,
+        country: countryFilter || undefined,
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
       })
@@ -44,7 +65,7 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [searchTerm, page])
+  }, [searchTerm, page, departmentFilter, countryFilter, departments])
 
   useEffect(() => {
     fetchPage()
@@ -56,14 +77,38 @@ export default function EmployeesPage() {
     setSearchTerm(query.trim())
   }
 
+  function handleDepartmentChange(value) {
+    setPage(0)
+    setDepartmentFilter(value)
+  }
+
+  function handleCountryChange(value) {
+    setPage(0)
+    setCountryFilter(value)
+  }
+
+  function clearFilters() {
+    setQuery('')
+    setSearchTerm('')
+    setDepartmentFilter('')
+    setCountryFilter('')
+    setPage(0)
+  }
+
+  const hasActiveFilter =
+    Boolean(searchTerm) || Boolean(departmentFilter) || Boolean(countryFilter)
+
   async function handleCreate(payload) {
     setIsCreating(true)
     setCreateError('')
     try {
-      await createEmployee(payload)
+      const created = await createEmployee(payload)
       setShowCreate(false)
       setPage(0)
       await fetchPage()
+      setCreateSuccess(
+        `Employee ${created.full_name || payload.first_name} added.`,
+      )
     } catch (err) {
       const detail = err?.response?.data?.detail
       setCreateError(
@@ -103,6 +148,11 @@ export default function EmployeesPage() {
           </Button>
         </header>
 
+        <SuccessBanner
+          message={createSuccess}
+          onDismiss={() => setCreateSuccess('')}
+        />
+
         {showCreate && (
           <section className="space-y-3 rounded-lg border bg-card p-6">
             <div>
@@ -123,7 +173,7 @@ export default function EmployeesPage() {
 
         <form
           onSubmit={handleSearchSubmit}
-          className="flex items-center gap-2"
+          className="flex flex-wrap items-center gap-2"
           role="search"
         >
           <Input
@@ -137,16 +187,41 @@ export default function EmployeesPage() {
           <Button type="submit" variant="default" size="sm">
             Search
           </Button>
-          {searchTerm && (
+
+          <select
+            aria-label="Filter by department"
+            className="h-9 rounded-md border bg-card px-3 text-sm"
+            value={departmentFilter}
+            onChange={(e) => handleDepartmentChange(e.target.value)}
+          >
+            <option value="">All departments</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            aria-label="Filter by country"
+            className="h-9 rounded-md border bg-card px-3 text-sm"
+            value={countryFilter}
+            onChange={(e) => handleCountryChange(e.target.value)}
+          >
+            <option value="">All countries</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          {hasActiveFilter && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setQuery('')
-                setSearchTerm('')
-                setPage(0)
-              }}
+              onClick={clearFilters}
             >
               Clear
             </Button>
@@ -168,7 +243,7 @@ export default function EmployeesPage() {
 
         {!loadError && data !== null && items.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {searchTerm ? 'No employees match that search.' : 'No employees yet.'}
+            {hasActiveFilter ? 'No employees match those filters.' : 'No employees yet.'}
           </p>
         )}
 

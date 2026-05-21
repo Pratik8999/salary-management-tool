@@ -5,6 +5,7 @@ import {
   listEmployeeDocuments,
   uploadEmployeeDocument,
 } from '@/api/employees'
+import SuccessBanner from '@/components/SuccessBanner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,6 +38,7 @@ export default function EmployeeDocumentsPanel({ employeeId }) {
   const [file, setFile] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
   const [busyDocId, setBusyDocId] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
   const fileInputRef = useRef(null)
 
   const refresh = useCallback(async () => {
@@ -63,10 +65,12 @@ export default function EmployeeDocumentsPanel({ employeeId }) {
     setIsUploading(true)
     setActionError('')
     try {
+      const uploadedName = file.name
       await uploadEmployeeDocument(employeeId, { docType, file })
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       await refresh()
+      setSuccessMessage(`${uploadedName} uploaded.`)
     } catch (err) {
       const detail = err?.response?.data?.detail
       setActionError(detail || 'Upload failed')
@@ -95,6 +99,7 @@ export default function EmployeeDocumentsPanel({ employeeId }) {
     try {
       await deleteEmployeeDocument(employeeId, doc.id)
       await refresh()
+      setSuccessMessage(`${doc.file_name} deleted.`)
     } catch (err) {
       const detail = err?.response?.data?.detail
       setActionError(detail || 'Delete failed')
@@ -145,6 +150,11 @@ export default function EmployeeDocumentsPanel({ employeeId }) {
           {isUploading ? 'Uploading...' : 'Upload'}
         </Button>
       </form>
+
+      <SuccessBanner
+        message={successMessage}
+        onDismiss={() => setSuccessMessage('')}
+      />
 
       {actionError && (
         <div

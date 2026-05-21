@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createUser, listUsers, updateUser } from '@/api/admin'
 import { Button } from '@/components/ui/button'
+import SuccessBanner from '@/components/SuccessBanner'
 import UserCreateForm from '@/components/UserCreateForm'
 import { useAuth } from '@/lib/AuthContext'
 
@@ -16,6 +17,7 @@ export default function UsersPage() {
   const [loadError, setLoadError] = useState('')
   const [createError, setCreateError] = useState('')
   const [editError, setEditError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [busyUserId, setBusyUserId] = useState(null)
 
@@ -40,6 +42,7 @@ export default function UsersPage() {
     try {
       await createUser(payload)
       await fetchUsers()
+      setSuccessMessage(`User ${payload.email} created.`)
     } catch (err) {
       const detail = err?.response?.data?.detail
       setCreateError(detail || 'Could not create user')
@@ -54,6 +57,7 @@ export default function UsersPage() {
     try {
       await updateUser(userId, payload)
       await fetchUsers()
+      setSuccessMessage('User updated.')
     } catch (err) {
       const detail = err?.response?.data?.detail
       setEditError(detail || 'Could not update user')
@@ -70,6 +74,11 @@ export default function UsersPage() {
             Admin and HR accounts that can sign in.
           </p>
         </header>
+
+        <SuccessBanner
+          message={successMessage}
+          onDismiss={() => setSuccessMessage('')}
+        />
 
         <section className="space-y-3 rounded-lg border bg-card p-6">
           <div>

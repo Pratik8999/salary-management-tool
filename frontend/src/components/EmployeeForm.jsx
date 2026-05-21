@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listDepartments } from '@/api/departments'
+import { listAllCountries } from '@/api/countries'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -67,6 +68,7 @@ export default function EmployeeForm({
   const [errors, setErrors] = useState({})
   const [departments, setDepartments] = useState([])
   const [departmentsError, setDepartmentsError] = useState('')
+  const [countries, setCountries] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -94,6 +96,29 @@ export default function EmployeeForm({
         if (cancelled) return
         const detail = err?.response?.data?.detail
         setDepartmentsError(detail || 'Could not load departments')
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    listAllCountries()
+      .then((data) => {
+        if (cancelled) return
+        const names = data.map((c) => c.name)
+        // When editing, keep the existing country in the options even if
+        // it's a legacy value not in the canonical catalog.
+        const incoming =
+          initialValues?.country && !names.includes(initialValues.country)
+            ? [...names, initialValues.country]
+            : names
+        setCountries(incoming)
+      })
+      .catch(() => {
+        // Falls back to the empty state below.
       })
     return () => {
       cancelled = true
@@ -188,14 +213,35 @@ export default function EmployeeForm({
             </p>
           )}
         </div>
-        <Field
-          id="emp-country"
-          label="Country"
-          value={values.country}
-          onChange={(v) => setField('country', v)}
-          error={errors.country}
-          disabled={isSubmitting}
-        />
+        <div className="space-y-1.5">
+          <Label htmlFor="emp-country">Country</Label>
+          <select
+            id="emp-country"
+            value={values.country}
+            onChange={(e) => setField('country', e.target.value)}
+            aria-invalid={Boolean(errors.country) || undefined}
+            aria-describedby={errors.country ? 'emp-country-error' : undefined}
+            disabled={isSubmitting || countries.length === 0}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Select a country</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {errors.country && (
+            <p id="emp-country-error" className="text-xs text-destructive">
+              {errors.country}
+            </p>
+          )}
+          {countries.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Country catalog is empty.
+            </p>
+          )}
+        </div>
         <Field
           id="emp-salary"
           label="Salary"

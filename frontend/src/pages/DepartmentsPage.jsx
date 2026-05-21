@@ -4,6 +4,7 @@ import {
   listDepartments,
   updateDepartment,
 } from '@/api/departments'
+import SuccessBanner from '@/components/SuccessBanner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ export default function DepartmentsPage() {
   const [editName, setEditName] = useState('')
   const [editError, setEditError] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const refresh = useCallback(async () => {
     setLoadError('')
@@ -49,8 +51,10 @@ export default function DepartmentsPage() {
     setCreateError('')
     try {
       await createDepartment({ name: newName.trim() })
+      const created = newName.trim()
       setNewName('')
       await refresh()
+      setSuccessMessage(`Department "${created}" added.`)
     } catch (err) {
       setCreateError(readDetail(err, 'Could not create department'))
     } finally {
@@ -75,6 +79,7 @@ export default function DepartmentsPage() {
       await updateDepartment(dept.id, { name: editName.trim() })
       setEditingId(null)
       await refresh()
+      setSuccessMessage('Department renamed.')
     } catch (err) {
       setEditError(readDetail(err, 'Could not update department'))
     } finally {
@@ -88,6 +93,11 @@ export default function DepartmentsPage() {
     try {
       await updateDepartment(dept.id, { is_active: !dept.is_active })
       await refresh()
+      setSuccessMessage(
+        dept.is_active
+          ? `Department "${dept.name}" deactivated.`
+          : `Department "${dept.name}" activated.`,
+      )
     } catch (err) {
       setEditError(readDetail(err, 'Could not update department'))
     } finally {
@@ -103,6 +113,11 @@ export default function DepartmentsPage() {
             The list HR picks from when adding employees.
           </p>
         </header>
+
+        <SuccessBanner
+          message={successMessage}
+          onDismiss={() => setSuccessMessage('')}
+        />
 
         <section className="space-y-3 rounded-lg border bg-card p-6">
           <div>

@@ -3,7 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { getEmployee, updateEmployee } from '@/api/employees'
 import EmployeeDocumentsPanel from '@/components/EmployeeDocumentsPanel'
 import EmployeeForm from '@/components/EmployeeForm'
+import SuccessBanner from '@/components/SuccessBanner'
 import { Button } from '@/components/ui/button'
+import { formatSalary } from '@/lib/currency'
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -30,6 +32,7 @@ export default function EmployeeDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editError, setEditError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -60,6 +63,7 @@ export default function EmployeeDetailPage() {
       const updated = await updateEmployee(employeeId, payload)
       setEmployee(updated)
       setIsEditing(false)
+      setSaveSuccess('Employee details saved.')
     } catch (err) {
       const detail = err?.response?.data?.detail
       setEditError(
@@ -122,6 +126,11 @@ export default function EmployeeDetailPage() {
               )}
             </header>
 
+            <SuccessBanner
+              message={saveSuccess}
+              onDismiss={() => setSaveSuccess('')}
+            />
+
             {isEditing ? (
               <section className="space-y-3 rounded-lg border bg-card p-6">
                 <div>
@@ -145,7 +154,7 @@ export default function EmployeeDetailPage() {
                 <Field label="Country" value={employee.country} />
                 <Field
                   label="Salary"
-                  value={Number(employee.salary).toLocaleString()}
+                  value={`${formatSalary(employee.salary)}${employee.currency ? ` ${employee.currency}` : ''}`}
                 />
                 <Field
                   label="Employment type"

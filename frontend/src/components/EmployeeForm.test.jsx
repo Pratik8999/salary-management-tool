@@ -6,18 +6,30 @@ import EmployeeForm from './EmployeeForm'
 vi.mock('@/api/departments', () => ({
   listDepartments: vi.fn(),
 }))
+vi.mock('@/api/countries', () => ({
+  listAllCountries: vi.fn(),
+}))
 
 import { listDepartments } from '@/api/departments'
+import { listAllCountries } from '@/api/countries'
 
 const DEPTS = [
   { id: 1, name: 'Engineering', is_active: true },
   { id: 2, name: 'Sales', is_active: true },
 ]
 
+const COUNTRIES = [
+  { name: 'India', currency: 'INR' },
+  { name: 'United Kingdom', currency: 'GBP' },
+  { name: 'United States', currency: 'USD' },
+]
+
 describe('EmployeeForm', () => {
   beforeEach(() => {
     listDepartments.mockReset()
     listDepartments.mockResolvedValue(DEPTS)
+    listAllCountries.mockReset()
+    listAllCountries.mockResolvedValue(COUNTRIES)
   })
 
   it('submits a normalized payload (department_id + salary as numbers)', async () => {
@@ -33,7 +45,8 @@ describe('EmployeeForm', () => {
     await user.type(screen.getByLabelText(/email/i), 'ada@example.com')
     await user.type(screen.getByLabelText(/job title/i), 'Engineer')
     await user.selectOptions(screen.getByLabelText(/department/i), '1')
-    await user.type(screen.getByLabelText(/country/i), 'UK')
+    await screen.findByRole('option', { name: 'United Kingdom' })
+    await user.selectOptions(screen.getByLabelText(/country/i), 'United Kingdom')
     await user.type(screen.getByLabelText(/salary/i), '50000')
     await user.type(screen.getByLabelText(/date joined/i), '2024-01-15')
 
@@ -47,7 +60,7 @@ describe('EmployeeForm', () => {
           email: 'ada@example.com',
           job_title: 'Engineer',
           department_id: 1,
-          country: 'UK',
+          country: 'United Kingdom',
           salary: 50000,
           date_joined: '2024-01-15',
           employment_type: 'full_time',
