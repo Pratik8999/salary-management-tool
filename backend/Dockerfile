@@ -21,7 +21,8 @@ COPY alembic.ini ./
 
 RUN uv sync --frozen --no-dev \
     && useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
+    && mkdir -p /data/documents \
+    && chown -R app:app /app /data
 
 USER app
 
