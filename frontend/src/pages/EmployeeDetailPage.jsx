@@ -73,8 +73,7 @@ export default function EmployeeDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/40 px-6 py-10">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
         <div>
           <Link
             to="/employees"
@@ -163,7 +162,6 @@ export default function EmployeeDetailPage() {
             {!isEditing && <EmployeeDocumentsPanel employeeId={employee.id} />}
           </>
         )}
-      </div>
-    </main>
+    </div>
   )
 }

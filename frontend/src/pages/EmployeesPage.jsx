@@ -84,8 +84,7 @@ export default function EmployeesPage() {
   const canNext = (page + 1) * PAGE_SIZE < total
 
   return (
-    <main className="min-h-screen bg-muted/40 px-6 py-10">
-      <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
         <header className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
@@ -238,7 +237,6 @@ export default function EmployeesPage() {
             </div>
           </div>
         )}
-      </div>
-    </main>
+    </div>
   )
 }

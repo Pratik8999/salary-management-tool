@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -70,9 +70,13 @@ describe('UsersPage', () => {
 
     renderApp()
 
-    expect(await screen.findByText('admin@example.com')).toBeInTheDocument()
-    expect(screen.getByText('hr@example.com')).toBeInTheDocument()
-    expect(screen.getAllByRole('row')).toHaveLength(3)
+    // The shell's top bar also renders the signed-in user's email,
+    // so scope row assertions to the table itself.
+    const rows = await screen.findAllByRole('row')
+    expect(rows).toHaveLength(3)
+    const { getByText } = within(rows[1])
+    expect(getByText('admin@example.com')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('hr@example.com')).toBeInTheDocument()
   })
 
   it('shows a loading indicator while the request is in flight', async () => {
@@ -283,7 +287,9 @@ describe('UsersPage', () => {
       },
     ])
     renderApp()
-    await screen.findByText('admin@example.com')
+    // Wait for the row to render — the email appears in the top bar too,
+    // so the button below is what really proves the row mounted.
+    await screen.findByRole('button', { name: /deactivate admin@example\.com/i })
     expect(
       screen.getByRole('button', { name: /deactivate admin@example\.com/i }),
     ).toBeDisabled()

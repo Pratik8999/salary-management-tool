@@ -96,8 +96,7 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/40 px-6 py-10">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Departments</h1>
           <p className="text-sm text-muted-foreground">
@@ -243,7 +242,6 @@ export default function DepartmentsPage() {
             </table>
           </div>
         )}
-      </div>
-    </main>
+    </div>
   )
 }

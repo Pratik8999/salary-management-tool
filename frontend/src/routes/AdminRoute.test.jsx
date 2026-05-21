@@ -67,7 +67,7 @@ describe('admin-only routes', () => {
     })
   })
 
-  it('shows the "Manage users" link on the dashboard for admins', async () => {
+  it('shows the admin "Users" nav link in the shell for admins', async () => {
     setToken('jwt-admin')
     getMe.mockResolvedValue({
       id: 1,
@@ -79,11 +79,11 @@ describe('admin-only routes', () => {
     renderAt('/dashboard')
 
     expect(
-      await screen.findByRole('link', { name: /manage users/i }),
+      await screen.findByRole('link', { name: /^users$/i }),
     ).toBeInTheDocument()
   })
 
-  it('hides the "Manage users" link on the dashboard for HR users', async () => {
+  it('hides the admin "Users" nav link in the shell for HR users', async () => {
     setToken('jwt-hr')
     getMe.mockResolvedValue({
       id: 2,
@@ -98,7 +98,7 @@ describe('admin-only routes', () => {
       await screen.findByRole('heading', { name: /dashboard/i }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: /manage users/i }),
+      screen.queryByRole('link', { name: /^users$/i }),
     ).not.toBeInTheDocument()
   })
 
