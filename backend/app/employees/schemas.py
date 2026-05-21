@@ -72,3 +72,10 @@ class EmployeeRead(EmployeeBase):
     created_by_id: int
     created_at: datetime
     updated_at: datetime
+
+
+class EmployeePage(BaseModel):
+    items: list[EmployeeRead]
+    total: int
+    limit: int
+    offset: int
