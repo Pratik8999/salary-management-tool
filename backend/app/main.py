@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.auth.router import router as auth_router
+from app.departments.router import router as departments_router
 from app.documents.router import router as documents_router
 from app.employees.router import router as employees_router
 from app.insights.router import router as insights_router
@@ -10,6 +11,7 @@ app = FastAPI(title="Salary Management API", version="0.1.0")
 
 app.include_router(auth_router)
 app.include_router(admin_users_router)
+app.include_router(departments_router)
 app.include_router(employees_router)
 app.include_router(insights_router)
 app.include_router(documents_router)
