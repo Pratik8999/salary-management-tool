@@ -5,6 +5,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import App from '../App'
 import { setToken, clearToken } from '@/lib/auth'
 
+vi.mock('@/api/auth', () => ({
+  login: vi.fn(),
+  getMe: vi.fn().mockResolvedValue({
+    id: 1,
+    email: 'admin@example.com',
+    role: 'admin',
+    is_active: true,
+  }),
+}))
 vi.mock('@/api/admin', () => ({
   listUsers: vi.fn(),
   createUser: vi.fn(),
@@ -74,7 +83,7 @@ describe('UsersPage', () => {
 
     renderApp()
 
-    expect(screen.getByText(/loading users/i)).toBeInTheDocument()
+    expect(await screen.findByText(/loading users/i)).toBeInTheDocument()
     resolveFn([])
     await waitFor(() => {
       expect(screen.queryByText(/loading users/i)).not.toBeInTheDocument()

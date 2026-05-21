@@ -10,3 +10,8 @@ export async function login({ email, password }) {
   })
   return data
 }
+
+export async function getMe() {
+  const { data } = await api.get('/auth/me')
+  return data
+}

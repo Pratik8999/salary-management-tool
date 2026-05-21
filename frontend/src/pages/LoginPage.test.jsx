@@ -7,6 +7,12 @@ import { clearToken, getToken } from '@/lib/auth'
 
 vi.mock('@/api/auth', () => ({
   login: vi.fn(),
+  getMe: vi.fn().mockResolvedValue({
+    id: 1,
+    email: 'admin@example.com',
+    role: 'admin',
+    is_active: true,
+  }),
 }))
 
 import { login } from '@/api/auth'

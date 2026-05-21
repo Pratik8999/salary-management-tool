@@ -1,8 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import App from './App'
 import { clearToken, setToken } from '@/lib/auth'
+
+vi.mock('@/api/auth', () => ({
+  login: vi.fn(),
+  getMe: vi.fn().mockResolvedValue({
+    id: 1,
+    email: 'admin@example.com',
+    role: 'admin',
+    is_active: true,
+  }),
+}))
 
 function renderAt(path) {
   return render(
@@ -31,11 +41,11 @@ describe('app routing', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the dashboard at /dashboard when a token is present', () => {
+  it('renders the dashboard at /dashboard when a token is present', async () => {
     setToken('test-token')
     renderAt('/dashboard')
     expect(
-      screen.getByRole('heading', { name: /dashboard/i }),
+      await screen.findByRole('heading', { name: /dashboard/i }),
     ).toBeInTheDocument()
   })
 

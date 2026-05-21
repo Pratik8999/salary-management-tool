@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LoginForm from '@/components/LoginForm'
 import { login } from '@/api/auth'
-import { setToken } from '@/lib/auth'
+import { useAuth } from '@/lib/AuthContext'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { signIn } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState('')
 
@@ -14,7 +15,7 @@ export default function LoginPage() {
     setServerError('')
     try {
       const { access_token } = await login(credentials)
-      setToken(access_token)
+      await signIn(access_token)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const detail = err?.response?.data?.detail

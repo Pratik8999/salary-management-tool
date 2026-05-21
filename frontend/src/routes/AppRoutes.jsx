@@ -20,7 +20,7 @@ export default function AppRoutes() {
       <Route
         path="/admin/users"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute role="admin">
             <UsersPage />
           </ProtectedRoute>
         }
