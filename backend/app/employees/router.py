@@ -11,8 +11,20 @@ from app.employees.schemas import (
     EmployeeUpdate,
 )
 from app.models.department import Department
-from app.models.employee import Employee
+from app.models.employee import Employee, EmploymentType
 from app.models.user import User
+
+# Single source of truth for the sortable columns. Keeping it here (and not
+# inferring from request strings) means an unknown sort value fails
+# validation up front instead of silently falling back to "by id".
+SORT_OPTIONS = {
+    "salary_asc": Employee.salary.asc(),
+    "salary_desc": Employee.salary.desc(),
+    "date_joined_asc": Employee.date_joined.asc(),
+    "date_joined_desc": Employee.date_joined.desc(),
+    "name_asc": (Employee.first_name.asc(), Employee.last_name.asc()),
+    "name_desc": (Employee.first_name.desc(), Employee.last_name.desc()),
+}
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
@@ -59,20 +71,36 @@ def create_employee(
 def list_employees(
     q: str | None = Query(default=None, min_length=1, max_length=100),
     department: str | None = Query(default=None, min_length=1, max_length=100),
+    department_id: int | None = Query(default=None, ge=1),
     country: str | None = Query(default=None, min_length=1, max_length=100),
+    job_title: str | None = Query(default=None, min_length=1, max_length=150),
+    employment_type: EmploymentType | None = Query(default=None),
+    sort: str | None = Query(default=None),
     include_inactive: bool = Query(default=False),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _hr: User = Depends(get_current_hr_or_admin),
 ) -> EmployeePage:
+    if sort is not None and sort not in SORT_OPTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"Unknown sort value: {sort}",
+        )
+
     filters = []
     if not include_inactive:
         filters.append(Employee.is_active.is_(True))
     if department is not None:
         filters.append(func.lower(Department.name) == department.lower())
+    if department_id is not None:
+        filters.append(Employee.department_id == department_id)
     if country is not None:
         filters.append(func.lower(Employee.country) == country.lower())
+    if job_title is not None:
+        filters.append(Employee.job_title.ilike(f"%{job_title}%"))
+    if employment_type is not None:
+        filters.append(Employee.employment_type == employment_type)
     if q is not None:
         pattern = f"%{q}%"
         filters.append(
@@ -88,12 +116,39 @@ def list_employees(
     total = db.execute(
         select(func.count()).select_from(base_stmt.subquery())
     ).scalar_one()
+
+    if sort is None:
+        order_clauses = (Employee.id,)
+    else:
+        chosen = SORT_OPTIONS[sort]
+        # Always end on Employee.id so paging through a tied sort key
+        # (e.g. two employees on the same salary) stays stable.
+        order_clauses = (*chosen, Employee.id) if isinstance(chosen, tuple) else (chosen, Employee.id)
+
     items = (
-        db.execute(base_stmt.order_by(Employee.id).limit(limit).offset(offset))
+        db.execute(base_stmt.order_by(*order_clauses).limit(limit).offset(offset))
         .scalars()
         .all()
     )
     return EmployeePage(items=list(items), total=total, limit=limit, offset=offset)
+
+
+@router.get("/countries", response_model=list[str])
+def list_countries(
+    db: Session = Depends(get_db),
+    _hr: User = Depends(get_current_hr_or_admin),
+) -> list[str]:
+    rows = (
+        db.execute(
+            select(Employee.country)
+            .where(Employee.is_active.is_(True))
+            .distinct()
+            .order_by(Employee.country)
+        )
+        .scalars()
+        .all()
+    )
+    return list(rows)
 
 
 @router.get("/{employee_id}", response_model=EmployeeRead)
