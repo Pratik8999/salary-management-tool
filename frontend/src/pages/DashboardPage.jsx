@@ -26,16 +26,22 @@ export default function DashboardPage() {
           </button>
         </header>
 
-        {isAdmin && (
-          <nav className="rounded-lg border bg-card p-4">
+        <nav className="rounded-lg border bg-card p-4 space-x-4">
+          <Link
+            to="/employees"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Employees
+          </Link>
+          {isAdmin && (
             <Link
               to="/admin/users"
               className="text-sm font-medium text-primary hover:underline"
             >
               Manage users
             </Link>
-          </nav>
-        )}
+          )}
+        </nav>
 
         <p className="text-sm text-muted-foreground">
           Placeholder shell — the real dashboard lands in a later slice.
