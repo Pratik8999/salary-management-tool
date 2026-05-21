@@ -11,6 +11,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -113,3 +114,36 @@ def list_documents(
         .order_by(EmployeeDocument.created_at.desc(), EmployeeDocument.id.desc())
     )
     return list(db.execute(stmt).scalars())
+
+
+@router.get("/{employee_id}/documents/{doc_id}/download")
+def download_document(
+    employee_id: int,
+    doc_id: int,
+    db: Session = Depends(get_db),
+    storage_root: Path = Depends(get_storage_root),
+    actor: User = Depends(get_current_hr_or_admin),
+) -> FileResponse:
+    if db.get(Employee, employee_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found"
+        )
+
+    doc = db.get(EmployeeDocument, doc_id)
+    if doc is None or doc.employee_id != employee_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    full_path = storage_root / doc.storage_path
+    if not full_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stored file is missing",
+        )
+
+    return FileResponse(
+        path=full_path,
+        media_type=doc.content_type,
+        filename=doc.file_name,
+    )
