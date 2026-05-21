@@ -17,11 +17,18 @@ A salary management application for HR, designed for ~10,000 employees with rich
 
 ```
 .
-├── backend/    # FastAPI service
+├── backend/    # FastAPI service (app, alembic migrations, seed)
 ├── frontend/   # React + Vite + Tailwind UI
-├── plan/       # Development plan (phases, ordering, open questions)
-└── README.md
+├── README.md
+└── docker-compose.yml
 ```
+
+## Prerequisites
+
+- Docker + Docker Compose (for the recommended path)
+- Or, for local-without-Docker: Python 3.13, [uv](https://docs.astral.sh/uv/), Node 22+, and a running Postgres 17
+
+---
 
 ## Run with Docker (recommended)
 
@@ -36,31 +43,32 @@ Then open:
 
 - Frontend → <http://localhost:5173>
 - Backend health → <http://localhost:8000/api/health>
+- API docs (Swagger) → <http://localhost:8000/docs>
 - Postgres → `localhost:5432` (credentials from `.env`)
 
-To stop and remove containers (keeping the database volume):
+### Useful compose commands
 
 ```bash
+# Start in the background
+docker compose up -d --build
+
+# Tail logs for a single service
+docker compose logs -f backend
+
+# Restart a single service after a code change
+docker compose restart backend
+
+# Rebuild after a Dockerfile or dependency change
+docker compose up -d --build backend
+
+# Stop and remove containers (keeps the DB volume)
 docker compose down
+
+# Stop and wipe everything, including the DB volume
+docker compose down -v
 ```
 
-## Run Locally (without Docker)
-
-### Backend
-
-```bash
-cd backend
-uv sync
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
+---
 
 ## Seed the Database
 
@@ -84,3 +92,133 @@ twice replaces the first batch rather than piling on.
 
 Typical timings on the dev stack: **~2.8s for 10,000 rows** (single
 transaction, 1,000-row INSERT batches).
+
+---
+
+## Run Locally (without Docker)
+
+### Backend
+
+```bash
+cd backend
+uv sync                                       # install deps into .venv
+uv run alembic upgrade head                   # apply migrations
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+The backend reads `DATABASE_URL` from your shell or `.env`; point it at a
+running Postgres before starting.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The dev server proxies `/api/*` to <http://localhost:8000> via Vite, so the
+two halves stay decoupled.
+
+---
+
+## Tests
+
+### Backend (pytest)
+
+The suite runs against a real Postgres database (`salary_management_test`)
+and uses a transactional per-test fixture so tests roll back cleanly. The
+`db` container must be running.
+
+```bash
+# Inside the container
+docker compose exec backend uv run pytest
+
+# Or locally — needs Postgres on localhost:5432
+cd backend && uv run pytest
+
+# A single file
+cd backend && uv run pytest tests/test_employees_list.py
+
+# A single test, with short tracebacks
+cd backend && uv run pytest tests/test_employees_list.py::test_returns_paginated_envelope --tb=short
+
+# Show print() output as it runs (handy for debugging)
+cd backend && uv run pytest -s
+
+# Stop on the first failure
+cd backend && uv run pytest -x
+```
+
+### Frontend (Vitest + React Testing Library)
+
+```bash
+cd frontend
+
+# One-shot run (CI style)
+npm test -- --run
+
+# Watch mode
+npm test
+
+# A single file
+npm test -- --run src/pages/EmployeesPage.test.jsx
+```
+
+---
+
+## Migrations (Alembic)
+
+Migrations live at `backend/alembic/versions/` and are applied automatically
+when the backend container starts, but you can drive them directly too:
+
+```bash
+# Apply everything
+docker compose exec backend uv run alembic upgrade head
+
+# Roll back one revision
+docker compose exec backend uv run alembic downgrade -1
+
+# Generate a new revision after editing a model (review the diff before committing!)
+docker compose exec backend uv run alembic revision --autogenerate -m "describe change"
+```
+
+---
+
+## Default Credentials
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `admin123` (only if you let the seed script create one — pre-existing users are never touched) |
+
+Reset / create users via the admin UI at `/admin/users` once you're signed in,
+or directly in Postgres if you need to recover.
+
+---
+
+## Project Layout (deeper)
+
+```
+backend/
+├── app/
+│   ├── auth/           # login, JWT, role guards
+│   ├── departments/    # admin CRUD + dropdown source
+│   ├── documents/      # employee document upload/download
+│   ├── employees/      # employee CRUD + list filters/sort
+│   ├── insights/       # salary + tenure + overview analytics
+│   ├── users/          # admin user management
+│   ├── models/         # SQLAlchemy models
+│   └── db/             # session, base, mixins
+├── alembic/            # migrations
+├── seed/               # 10k-employee bulk seed + name lists
+└── tests/              # pytest suite (one file per endpoint/feature)
+
+frontend/
+├── src/
+│   ├── api/            # axios clients per resource
+│   ├── components/     # shared widgets + shadcn/ui
+│   ├── lib/            # auth context, api instance, utils
+│   ├── pages/          # one file per screen
+│   └── routes/         # AppRoutes + ProtectedRoute
+└── tests live next to the file they cover (`Foo.test.jsx`)
+```
