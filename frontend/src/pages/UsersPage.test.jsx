@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import App from '../App'
@@ -6,9 +7,10 @@ import { setToken, clearToken } from '@/lib/auth'
 
 vi.mock('@/api/admin', () => ({
   listUsers: vi.fn(),
+  createUser: vi.fn(),
 }))
 
-import { listUsers } from '@/api/admin'
+import { listUsers, createUser } from '@/api/admin'
 
 function renderApp(path = '/admin/users') {
   return render(
@@ -22,6 +24,7 @@ describe('UsersPage', () => {
   beforeEach(() => {
     clearToken()
     listUsers.mockReset()
+    createUser.mockReset()
     setToken('jwt-test')
   })
 
@@ -98,5 +101,64 @@ describe('UsersPage', () => {
     expect(
       await screen.findByText(/could not load users/i),
     ).toBeInTheDocument()
+  })
+
+  it('creates a user and refreshes the list', async () => {
+    listUsers
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 7,
+          email: 'new-hr@example.com',
+          role: 'hr',
+          is_active: true,
+          created_at: '2026-05-21T00:00:00Z',
+          updated_at: '2026-05-21T00:00:00Z',
+        },
+      ])
+    createUser.mockResolvedValueOnce({
+      id: 7,
+      email: 'new-hr@example.com',
+      role: 'hr',
+      is_active: true,
+      created_at: '2026-05-21T00:00:00Z',
+      updated_at: '2026-05-21T00:00:00Z',
+    })
+
+    const user = userEvent.setup()
+    renderApp()
+
+    expect(await screen.findByText(/no users yet/i)).toBeInTheDocument()
+    await user.type(screen.getByLabelText(/email/i), 'new-hr@example.com')
+    await user.type(screen.getByLabelText(/password/i), 'secret123')
+    await user.selectOptions(screen.getByLabelText(/role/i), 'hr')
+    await user.click(screen.getByRole('button', { name: /create user/i }))
+
+    await waitFor(() => {
+      expect(createUser).toHaveBeenCalledWith({
+        email: 'new-hr@example.com',
+        password: 'secret123',
+        role: 'hr',
+      })
+    })
+    expect(await screen.findByText('new-hr@example.com')).toBeInTheDocument()
+    expect(listUsers).toHaveBeenCalledTimes(2)
+  })
+
+  it('surfaces the server error when create fails', async () => {
+    listUsers.mockResolvedValueOnce([])
+    createUser.mockRejectedValueOnce({
+      response: { status: 409, data: { detail: 'Email already exists' } },
+    })
+
+    const user = userEvent.setup()
+    renderApp()
+
+    await screen.findByText(/no users yet/i)
+    await user.type(screen.getByLabelText(/email/i), 'dup@example.com')
+    await user.type(screen.getByLabelText(/password/i), 'secret123')
+    await user.click(screen.getByRole('button', { name: /create user/i }))
+
+    expect(await screen.findByText(/email already exists/i)).toBeInTheDocument()
   })
 })
