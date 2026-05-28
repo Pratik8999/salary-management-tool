@@ -2,10 +2,6 @@
 
 A salary management application for HR, designed for ~10,000 employees with rich analytics and insights. Built with a TDD-first workflow.
 
-## Live demo
-
-🌐 **<http://52.66.203.58/>**
-
 The instance is seeded with 5,000 employees across 10 departments and 10 countries.
 
 The high-level design (architecture, data model, trade-offs) is documented in [`plan/HLD.md`](plan/HLD.md). How AI was used during development is documented in [`plan/AI_USAGE.md`](plan/AI_USAGE.md).
